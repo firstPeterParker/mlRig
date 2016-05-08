@@ -70,6 +70,14 @@ class ModuleA():
 		for joint in joints:
 			trans_ctrl.append(self.create_trans_ctrl_at_joint(joint))
 
+		root_joint_point_con = cmds.pointConstraint(translation_control[0], joint[0], maintainOffset=False, name=joints[0]+"_pointConstraint")
+		cmds.container(self.container_name, edit=True, addNode=root_joint_point_con)
+
+		# Set up stretchy joint segment
+
+		for index in range(len(joints)-1):
+			self.setup_stretchy_jnt_segment(joints[index], joints[index+1])
+
 		cmds.lockNode(self.container_name, lock=True, lockUnpublished=True)
 
 	def create_trans_ctrl_at_joint(self, joint):
@@ -100,7 +108,8 @@ class ModuleA():
 
 		return joint_name+"_translation_control"
 
-
+	def setup_stretchy_jnt_segment(self, parent_joint, child_joint):
+		print parent_joint, child_joint
 
 
 
