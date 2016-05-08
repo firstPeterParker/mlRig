@@ -10,7 +10,7 @@ import system.utils as utils
 CLASS_NAME = "ModuleA"
 TITLE = "Module A"
 DESCRIPTION = "This is a description for module A"
-ICON = os.environ["mlrig_tool"] + "/icons/_hand.xpm"
+ICON = os.environ["mlrig_tool"]+"/icons/_hand.xpm"
 
 class ModuleA():
 	def __init__(self, user_specified_name):
@@ -18,9 +18,9 @@ class ModuleA():
 		self.module_name = CLASS_NAME
 		self.user_specified_name = user_specified_name
 
-		self.module_namespace = self.module_name + "__" + self.user_specified_name
+		self.module_namespace = self.module_name+"__"+self.user_specified_name
 
-		self.container_name = self.module_namespace + ":module_container"
+		self.container_name = self.module_namespace+":module_container"
 
 		self.joint_info = [ ["root_joint", [0.0, 0.0, 0.0]], ["end_joint", [4.0, 0.0, 0.0]] ]
 
@@ -99,6 +99,7 @@ class ModuleA():
 		return control
 
 	def get_trans_ctrl(self, joint_name):
+
 		return joint_name+"_translation_control"
 
 
