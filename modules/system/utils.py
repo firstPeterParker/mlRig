@@ -65,7 +65,7 @@ def strip_leading_namespace(node_name):
 
 	return [split_string[0], split_string[2]]
 
-def basic_stretchy_ik(root_joint, end_joint, container=None, lock_minimum_length=True, pole_vector_object=None, scale_correct_atrribute=None):
+def basic_stretchy_ik(root_joint, end_joint, container=None, lock_min_len=True, pole_vector_obj=None, scale_correct_atrr=None):
 	
 	contained_nodes = []
 
@@ -75,11 +75,61 @@ def basic_stretchy_ik(root_joint, end_joint, container=None, lock_minimum_length
 	ik_nodes[1] = cmds.rename(ik_nodes[1], root_joint+"_ikEffector")
 	ik_effector = ik_nodes[1]
 	ik_handle = ik_nodes[0]
-	ik_handle = cmds.setAttr(ik_handle+".visibility", 0)
+	
+	cmds.setAttr(ik_handle+".visibility", 0)
 	contained_nodes.extend(ik_nodes)
 
 	# Create pole vector locator 
 
-	if pole_vector_object == None:
-		pole_vector_object = cmds.spaceLocator(n=ik_handle+"_poleVectorLocator")[0]
+	if pole_vector_obj == None:
+		
+		pole_vector_obj = cmds.spaceLocator(name=ik_handle+"_poleVectorLocator")[0]
+		contained_nodes.append(pole_vector_obj)
+		cmds.xform(pole_vector_obj, worldSpace=True, absolute=True, translation=cmds.xform(root_joint, q=True, worldSpace=True, translation=True))
+		cmds.xform(pole_vector_obj, worldSpace=True, relative=True, translation=[0.0, 1.0, 0.0])
+
+		cmds.setAttr(pole_vector_obj+".visibility", 0)
+
+	pole_vector_con = cmds.poleVectorConstraint(pole_vector_obj, ik_handle)[0]
+	contained_nodes.append(pole_vector_con)
+
+	# Create root and end locators
+	
+	root_loc = cmds.spaceLocator(n=root_joint+"_rootPosLocator")[0]
+	root_loc_point_con = cmds.pointConstraint(root_joint, root_loc, maintainOffset=False, n=root_loc+"_pointConstraint")[0]
+
+	end_loc = cmds.spaceLocator(n=end_joint+"_endPosLocator")[0]
+	cmds.xform(end_loc, worldSpace=True, absolute=True, translation=cmds.xform(ik_handle, q=True, worldSpace=True, translation=True))
+
+	ik_handle_point_con = cmds.pointConstraint(end_loc, ik_handle, maintainOffset=False, n=ik_handle+"_pointConstraint")[0]
+
+	contained_nodes.extend([root_loc, end_loc, root_loc_point_con, ik_handle_point_con])
+
+	cmds.setAttr(root_loc+".visibility", 0)
+	cmds.setAttr(end_loc+".visibility", 0)
+
+	if container != None:
+		cmds.container(container, edit=True, addNode=contained_nodes, ihb=True)
+
+	return_dict = {}
+
+	return_dict["ik_handle"] = ik_handle
+	return_dict["ik_effector"] = ik_effector
+	return_dict["root_loc"] = root_loc
+	return_dict["end_loc"] = end_loc
+	return_dict["pole_vector_obj"] = pole_vector_obj
+	return_dict["ik_handle_point_con"] = ik_handle_point_con
+	return_dict["root_loc_point_con"] = root_loc_point_con
+
+	return return_dict
+
+
+
+
+
+
+
+
+
+
 

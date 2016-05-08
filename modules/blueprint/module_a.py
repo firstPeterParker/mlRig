@@ -24,7 +24,6 @@ class ModuleA():
 
 		self.joint_info = [ ["root_joint", [0.0, 0.0, 0.0]], ["end_joint", [4.0, 0.0, 0.0]] ]
 
-
 	def install(self):
 		
 		cmds.namespace(setNamespace = ":")
@@ -72,7 +71,6 @@ class ModuleA():
 			trans_ctrl.append(self.create_trans_ctrl_at_joint(joint))
 
 		cmds.lockNode(self.container_name, lock=True, lockUnpublished=True)
-
 
 	def create_trans_ctrl_at_joint(self, joint):
 		
