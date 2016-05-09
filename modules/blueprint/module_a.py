@@ -53,7 +53,6 @@ class ModuleA():
 			joints.append(joint_name_full)
 
 			cmds.container(self.container_name, edit=True, addNode=joint_name_full)
-
 			cmds.container(self.container_name, edit=True, publishAndBind=[joint_name_full+".rotate", joint_name+"_R"])
 			cmds.container(self.container_name, edit=True, publishAndBind=[joint_name_full+".rotateOrder", joint_name+"_rotateOrder"])
 
@@ -70,7 +69,8 @@ class ModuleA():
 		for joint in joints:
 			trans_ctrl.append(self.create_trans_ctrl_at_joint(joint))
 
-		root_joint_point_con = cmds.pointConstraint(translation_control[0], joint[0], maintainOffset=False, name=joints[0]+"_pointConstraint")
+		root_joint_point_con = cmds.pointConstraint(trans_ctrl[0], joints[0], maintainOffset=False, name=joints[0]+"_pointConstraint")
+		
 		cmds.container(self.container_name, edit=True, addNode=root_joint_point_con)
 
 		# Set up stretchy joint segment
