@@ -11,6 +11,7 @@ reload(utils)
 
 class BlueprintUi:
 	def __init__(self):
+		
 		# Store UI elements in a dictionary
 		self.ui_elements = {}
 
@@ -101,7 +102,4 @@ class BlueprintUi:
 		module_class = getattr(mod, mod.CLASS_NAME)
 		module_instance = module_class(user_specified_name)
 		module_instance.install()
-
-
-
 

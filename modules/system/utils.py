@@ -8,6 +8,7 @@ import re
 import maya.cmds as cmds
 
 def find_all_modules(relative_directory):
+	
 	# Search the relative directory for all available modules 
 	# Return a list of all module name (excluding the ".py" extension)
 	all_py_files = find_all_files(relative_directory, ".py")
@@ -21,6 +22,7 @@ def find_all_modules(relative_directory):
 	return return_modules
 
 def find_all_files(relative_directory, file_extension):
+	
 	# Search the relative directory for all files with the given extenion 
 	# Return a list of all file names, excluding the file extension
 
@@ -42,7 +44,6 @@ def find_all_files(relative_directory, file_extension):
 
 def find_highest_trailing_number(names, basename):
 	
-
 	highest_value = 0 
 
 	for n in names:
@@ -58,6 +59,7 @@ def find_highest_trailing_number(names, basename):
 	return highest_value
 
 def strip_leading_namespace(node_name):
+	
 	if str(node_name).find(":") == -1:
 		return None
 
@@ -123,13 +125,13 @@ def basic_stretchy_ik(root_joint, end_joint, container=None, lock_min_len=True, 
 
 	return return_dict
 
+def force_scene_update():
+	
+	cmds.setToolTo("moveSuperContext")
+	nodes = cmds.ls()
 
+	for node in nodes:
+		cmds.select(node, replace=True)
 
-
-
-
-
-
-
-
-
+	cmds.select(clear=True)
+	cmds.setToolTo("selectSuperContext")

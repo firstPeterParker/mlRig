@@ -6,6 +6,7 @@ Module A
 import os
 import maya.cmds as cmds
 import system.utils as utils
+reload(utils)
 
 CLASS_NAME = "ModuleA"
 TITLE = "Module A"
@@ -70,13 +71,14 @@ class ModuleA():
 			trans_ctrl.append(self.create_trans_ctrl_at_joint(joint))
 
 		root_joint_point_con = cmds.pointConstraint(trans_ctrl[0], joints[0], maintainOffset=False, name=joints[0]+"_pointConstraint")
-		
 		cmds.container(self.container_name, edit=True, addNode=root_joint_point_con)
 
 		# Set up stretchy joint segment
 
 		for index in range(len(joints)-1):
 			self.setup_stretchy_jnt_segment(joints[index], joints[index+1])
+
+		utils.force_scene_update()
 
 		cmds.lockNode(self.container_name, lock=True, lockUnpublished=True)
 
@@ -109,14 +111,28 @@ class ModuleA():
 		return joint_name+"_translation_control"
 
 	def setup_stretchy_jnt_segment(self, parent_joint, child_joint):
-		print parent_joint, child_joint
+		parent_trans_control = self.get_trans_ctrl(parent_joint)
+		child_trans_control = self.get_trans_ctrl(child_joint)
 
+		pole_vector_loc = cmds.spaceLocator(n=parent_trans_control+"_poleVectorLocator")[0]
+		pole_vector_loc_grp = cmds.group(pole_vector_loc, n=pole_vector_loc+"_parentConstraintGrp")
 
+		cmds.parent(pole_vector_loc_grp, self.module_grp, absolute=True)
+		parent_con = cmds.parentConstraint(parent_trans_control, pole_vector_loc_grp, maintainOffset=False)[0]
 
+		cmds.setAttr(pole_vector_loc+".visibility", 0)
+		cmds.setAttr(pole_vector_loc+".ty", -0.5)
 
+		ik_nodes = utils.basic_stretchy_ik(parent_joint, child_joint, container=self.container_name, lock_min_len=False, pole_vector_obj=pole_vector_loc, scale_correct_atrr=None)
+		ik_handle = ik_nodes["ik_handle"]
+		root_loc = ik_nodes["root_loc"]
+		end_loc = ik_nodes["end_loc"]
 
+		child_point_con = cmds.pointConstraint(child_trans_control, end_loc, maintainOffset=False, n=end_loc+"_pointConstraint")[0]
 
+		cmds.container(self.container_name, edit=True, addNode=[pole_vector_loc_grp, parent_con, child_point_con], ihb=True)
 
-
-
+		for node in [ik_handle, root_loc, end_loc]:
+			cmds.parent(node, self.joints_grp, absolute=True)
+			cmds.setAttr(node+".visibility", 0)
 
