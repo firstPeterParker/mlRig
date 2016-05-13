@@ -6,6 +6,7 @@ utilities
 import os
 import re
 import types
+from math import fabs
 import maya.cmds as cmds
 
 def find_all_modules(relative_directory):
@@ -68,9 +69,40 @@ def strip_leading_namespace(node_name):
 
 	return [split_string[0], split_string[2]]
 
+def strip_all_namespaces(node_name):
+
+	if str(node_name).find(":") == -1:
+		return None
+
+	split_string = str(node_name).rpartition(":")
+
+	return [split_string[0], split_string[2]]
+
 def basic_stretchy_ik(root_joint, end_joint, container=None, lock_min_len=True, pole_vector_obj=None, scale_correct_atrr=None):
 	
 	contained_nodes = []
+
+	total_orig_len = 0.0
+	done = False
+	parent = root_joint
+	child_joints = []
+
+	while not done:
+		children = cmds.listRelatives(parent, children=True)
+		children = cmds.ls(children, type="joint")
+
+		if len(children) == 0:
+			done = True
+		else:
+			child = children[0]
+			child_joints.append(child)
+
+			total_orig_len += fabs(cmds.getAttr(child+".translateX"))
+
+			parent = child
+
+			if child == end_joint:
+				done = True
 
 	# Create rotate plane IK on joint chain
 
@@ -110,6 +142,42 @@ def basic_stretchy_ik(root_joint, end_joint, container=None, lock_min_len=True, 
 
 	cmds.setAttr(root_loc+".visibility", 0)
 	cmds.setAttr(end_loc+".visibility", 0)
+
+	# Grabbing distance between locator
+
+	root_loc_without_namespace = strip_all_namespaces(root_loc)[1]
+	end_loc_without_namespace = strip_all_namespaces(end_loc)[1]
+	module_namespace = strip_all_namespaces(root_joint)[0]
+
+	dist_node = cmds.shadingNode("distanceBetween", asUtility=True, n=module_namespace+":distBetween_"+root_loc_without_namespace+"_"+end_loc_without_namespace)
+
+	contained_nodes.append(dist_node)
+
+	cmds.connectAttr(root_loc+"Shape.worldPosition[0]", dist_node+".point1")
+	cmds.connectAttr(end_loc+"Shape.worldPosition[0]", dist_node+".point2")
+
+	scale_attr = dist_node+".distance"
+
+	# Divide distance by total original length = scale factor
+	scale_factor = cmds.shadingNode("multiplyDivide", asUtility=True, n=ik_handle+"_scaleFactor")
+	contained_nodes.append(scale_factor)
+
+	cmds.setAttr(scale_factor+".operation", 2)
+	cmds.connectAttr(scale_attr, scale_factor+".input1X")
+	cmds.setAttr(scale_factor+".input2X", total_orig_len)
+
+	translation_driver = scale_factor+".outputX"
+
+	# Connect joints to stretchy calculations
+
+	for joint in child_joints:
+
+		mult_node = cmds.shadingNode("multiplyDivide", asUtility=True, n=joint+"_scaleMultiply")
+		contained_nodes.append(mult_node)
+
+		cmds.setAttr(mult_node+".input1X", cmds.getAttr(joint+".translateX"))
+		cmds.connectAttr(translation_driver, mult_node+".input2X")
+		cmds.connectAttr(mult_node+".outputX", joint+".translateX")
 
 	if container != None:
 		add_node_to_container(container, contained_nodes, ihb=True)
