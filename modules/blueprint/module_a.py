@@ -53,7 +53,8 @@ class ModuleA():
 			joint_name_full = cmds.joint(n=self.module_namespace+":"+joint_name, p=joint_pos)
 			joints.append(joint_name_full)
 
-			cmds.container(self.container_name, edit=True, addNode=joint_name_full)
+			utils.add_node_to_container(self.container_name, joint_name_full)
+
 			cmds.container(self.container_name, edit=True, publishAndBind=[joint_name_full+".rotate", joint_name+"_R"])
 			cmds.container(self.container_name, edit=True, publishAndBind=[joint_name_full+".rotateOrder", joint_name+"_rotateOrder"])
 
@@ -71,7 +72,8 @@ class ModuleA():
 			trans_ctrl.append(self.create_trans_ctrl_at_joint(joint))
 
 		root_joint_point_con = cmds.pointConstraint(trans_ctrl[0], joints[0], maintainOffset=False, name=joints[0]+"_pointConstraint")
-		cmds.container(self.container_name, edit=True, addNode=root_joint_point_con)
+
+		utils.add_node_to_container(self.container_name, root_joint_point_con)
 
 		# Set up stretchy joint segment
 
@@ -88,7 +90,8 @@ class ModuleA():
 		cmds.file(pos_ctrl_file, i=True)
 
 		container = cmds.rename("translation_control_container", joint+"_translation_control_container")
-		cmds.container(self.container_name, edit=True, addNode=container)
+		
+		utils.add_node_to_container(self.container_name, container)
 
 		for node in cmds.container(container, q=True, nodeList=True):
 			cmds.rename(node, joint+"_"+node, ignoreShape=True)
@@ -130,7 +133,7 @@ class ModuleA():
 
 		child_point_con = cmds.pointConstraint(child_trans_control, end_loc, maintainOffset=False, n=end_loc+"_pointConstraint")[0]
 
-		cmds.container(self.container_name, edit=True, addNode=[pole_vector_loc_grp, parent_con, child_point_con], ihb=True)
+		utils.add_node_to_container(self.container_name, [pole_vector_loc_grp, parent_con, child_point_con], ihb=True)
 
 		for node in [ik_handle, root_loc, end_loc]:
 			cmds.parent(node, self.joints_grp, absolute=True)
