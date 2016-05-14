@@ -32,7 +32,8 @@ class ModuleA():
 
 		self.joints_grp = cmds.group(empty=True, name=self.module_namespace+":joint_grp")
 		self.hierarchy_grp = cmds.group(empty=True, name=self.module_namespace+":hierarchy_grp")
-		self.module_grp = cmds.group([self.joints_grp, self.hierarchy_grp], name=self.module_namespace+":module_grp")
+		self.ori_ctrl_grp = cmds.group(empty=True, name=self.module_namespace+":orientationControls_grp")
+		self.module_grp = cmds.group([self.joints_grp, self.hierarchy_grp, self.ori_ctrl_grp], name=self.module_namespace+":module_grp")
 
 		cmds.container(name=self.container_name, addNode=self.module_grp, ihb=True)
 
@@ -84,6 +85,10 @@ class ModuleA():
 
 		for index in range(len(joints)-1):
 			self.setup_stretchy_jnt_segment(joints[index], joints[index+1])
+
+		# None default functionality
+
+		self.create_ori_ctrl(joints[0], joints[1])
 
 		utils.force_scene_update()
 
@@ -203,12 +208,26 @@ class ModuleA():
 		cmds.container(self.container_name, edit=True, publishAndBind=[self.module_trans+".rotate", "moduleTransform_R"])
 		cmds.container(self.container_name, edit=True, publishAndBind=[self.module_trans+".globalScale", "moduleTransform_globalScale"])
 
+	def delete_hierarchy(self, parent_joint):
 
+		hierarchy_container = parent_joint+"_hierarchy_representation_container"
+		cmds.delete(hierarchy_container)
 
+	def create_ori_ctrl(self, parent_joint, child_joint):
 
+		self.delete_hierarchy(parent_joint)
 
+		nodes = self.create_stretchy_obj("/controlobjects/blueprint/orientation_control.ma", "orientation_control_container", "orientation_control", parent_joint, child_joint)
+		ori_container = nodes[0]
+		ori_ctrl = nodes[1]
+		con_grp = nodes[2]
 
+		cmds.parent(con_grp, self.ori_ctrl_grp, relative=True)
 
+		parent_joint_without_namespace = utils.strip_all_namespaces(parent_joint)[1]
+		attr_name = parent_joint_without_namespace+"_orientation"
 
+		cmds.container(ori_container, edit=True, publishAndBind=[ori_ctrl+".rotateX", attr_name])
+		cmds.container(self.container_name, edit=True, publishAndBind=[ori_container+"."+attr_name, attr_name])
 
-
+		return ori_ctrl
