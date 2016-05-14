@@ -31,7 +31,8 @@ class ModuleA():
 		cmds.namespace(add=self.module_namespace)
 
 		self.joints_grp = cmds.group(empty=True, name=self.module_namespace+":joint_grp")
-		self.module_grp = cmds.group(self.joints_grp, name=self.module_namespace+":module_grp")
+		self.hierarchy_grp = cmds.group(empty=True, name=self.module_namespace+":hierarchy_grp")
+		self.module_grp = cmds.group([self.joints_grp, self.hierarchy_grp], name=self.module_namespace+":module_grp")
 
 		cmds.container(name=self.container_name, addNode=self.module_grp, ihb=True)
 
@@ -52,6 +53,8 @@ class ModuleA():
 
 			joint_name_full = cmds.joint(n=self.module_namespace+":"+joint_name, p=joint_pos)
 			joints.append(joint_name_full)
+
+			cmds.setAttr(joint_name_full+".visibility", 0)
 
 			utils.add_node_to_container(self.container_name, joint_name_full)
 
@@ -118,7 +121,7 @@ class ModuleA():
 		child_trans_control = self.get_trans_ctrl(child_joint)
 
 		pole_vector_loc = cmds.spaceLocator(n=parent_trans_control+"_poleVectorLocator")[0]
-		pole_vector_loc_grp = cmds.group(pole_vector_loc, n=pole_vector_loc+"_parentConstraintGrp")
+		pole_vector_loc_grp = cmds.group(pole_vector_loc, n=pole_vector_loc+"_parentConstraint_grp")
 
 		cmds.parent(pole_vector_loc_grp, self.module_grp, absolute=True)
 		parent_con = cmds.parentConstraint(parent_trans_control, pole_vector_loc_grp, maintainOffset=False)[0]
@@ -138,4 +141,37 @@ class ModuleA():
 		for node in [ik_handle, root_loc, end_loc]:
 			cmds.parent(node, self.joints_grp, absolute=True)
 			cmds.setAttr(node+".visibility", 0)
+
+		self.create_hierarchy(parent_joint, child_joint)
+
+	def create_hierarchy(self, parent_joint, child_joint):
+
+		nodes = self.create_stretchy_obj("/controlobjects/blueprint/hierarchy_representation.ma", "hierarchy_representation_container", "hierarchy_representation", parent_joint, child_joint)
+		con_grp = nodes[2]
+
+		cmds.parent(con_grp, self.hierarchy_grp, relative=True)
+
+	def create_stretchy_obj(self, obj_relative_filepath, obj_container_name, obj_name, parent_joint, child_joint):
+
+		obj_file = os.environ["mlrig_tool"]+obj_relative_filepath
+		cmds.file(obj_file, i=True)
+
+		obj_container = cmds.rename(obj_container_name, parent_joint+"_"+obj_container_name)
+
+		for node in cmds.container(obj_container, q=True, nodeList=True):
+			cmds.rename(node, parent_joint+"_"+node, ignoreShape=True)
+
+		obj = parent_joint+"_"+obj_name
+
+		con_grp = cmds.group(empty=True, name=obj+"_parentConstraint_grp")
+		cmds.parent(obj, con_grp, absolute=True)
+
+		parent_con = cmds.parentConstraint(parent_joint, con_grp, maintainOffset=False)[0]
+
+		cmds.connectAttr(child_joint+".translateX", con_grp+".scaleX")
+
+		utils.add_node_to_container(obj_container, [con_grp, parent_con], ihb=True)
+		utils.add_node_to_container(self.container_name, obj_container)
+
+		return(obj_container, obj, con_grp)
 
