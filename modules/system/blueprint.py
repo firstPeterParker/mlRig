@@ -20,12 +20,14 @@ class Blueprint():
 
 		self.joint_info = joint_info
 
-	# Methods intended for overriding by derived classes
+		# Methods intended for overriding by derived classes
+	
 	def install_custom(self, joints):
-		
+
 		print "install_custom() method is not implemented by derived class"
 
-	# Baseclass Methods 
+		# Baseclass Methods 
+	
 	def install(self):
 		
 		cmds.namespace(setNamespace = ":")
