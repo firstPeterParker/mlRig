@@ -126,6 +126,7 @@ class ModuleA():
 		return joint_name+"_translation_control"
 
 	def setup_stretchy_jnt_segment(self, parent_joint, child_joint):
+		
 		parent_trans_control = self.get_trans_ctrl(parent_joint)
 		child_trans_control = self.get_trans_ctrl(child_joint)
 

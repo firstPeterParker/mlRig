@@ -13,6 +13,7 @@ class BlueprintUi:
 	def __init__(self):
 		
 		# Store UI elements in a dictionary
+
 		self.ui_elements = {}
 
 		if cmds.window("blueprint_ui_window", exists=True):
@@ -26,6 +27,7 @@ class BlueprintUi:
 		self.ui_elements["top_level_column"] = cmds.columnLayout(adjustableColumn=True, columnAlign="center")
 
 		# Setup tabs
+
 		tab_height = 500
 		self.ui_elements["tabs"] = cmds.tabLayout(height=tab_height, innerMarginWidth=5, innerMarginHeight=5)
 
@@ -37,11 +39,12 @@ class BlueprintUi:
 		cmds.tabLayout(self.ui_elements["tabs"], edit=True, tabLabelIndex=([1, "Modules"]))
 
 		# Display window
+
 		cmds.showWindow(self.ui_elements["window"])
 
 	def initialize_module_tab(self, tab_height, tab_width):
 		
-		scroll_height = tab_height # temp value
+		scroll_height = tab_height
 
 		self.ui_elements["module_column"] = cmds.columnLayout(adj=True, rs=3)
 		self.ui_elements["module_frame_layout"] = cmds.frameLayout(height=scroll_height, collapsable=False, borderVisible=False, labelVisible=False)
@@ -71,6 +74,7 @@ class BlueprintUi:
 		icon = mod.ICON 
 
 		# Create UI
+
 		button_size = 64
 		row = cmds.rowLayout(numberOfColumns=2, columnWidth=([1, button_size]), adjustableColumn=2, columnAttach=([1, "both", 0],[2, "both", 5]))
 

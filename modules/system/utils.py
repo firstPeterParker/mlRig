@@ -13,6 +13,7 @@ def find_all_modules(relative_directory):
 	
 	# Search the relative directory for all available modules 
 	# Return a list of all module name (excluding the ".py" extension)
+
 	all_py_files = find_all_files(relative_directory, ".py")
 
 	return_modules = []
@@ -33,6 +34,7 @@ def find_all_files(relative_directory, file_extension):
 	all_files = os.listdir(file_directory)
 
 	# refine all files, listing only those of the specified file extension
+	
 	return_files = []
 
 	for f in all_files:
@@ -159,6 +161,7 @@ def basic_stretchy_ik(root_joint, end_joint, container=None, lock_min_len=True, 
 	scale_attr = dist_node+".distance"
 
 	# Divide distance by total original length = scale factor
+	
 	scale_factor = cmds.shadingNode("multiplyDivide", asUtility=True, n=ik_handle+"_scaleFactor")
 	contained_nodes.append(scale_factor)
 
