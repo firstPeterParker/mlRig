@@ -69,6 +69,8 @@ class ModuleA():
 
 		cmds.parent(joints[0], self.joints_grp, absolute=True)
 
+		self.init_module_trans(self.joint_info[0][1])
+
 		trans_ctrl = []
 
 		for joint in joints:
@@ -100,6 +102,8 @@ class ModuleA():
 			cmds.rename(node, joint+"_"+node, ignoreShape=True)
 
 		control = joint+"_translation_control"
+
+		cmds.parent(control, self.module_trans, absolute=True)
 
 		joint_pos = cmds.xform(joint, q=True, worldSpace=True, translation=True)
 		cmds.xform(control, worldSpace=True, absolute=True, translation=joint_pos)
@@ -170,8 +174,41 @@ class ModuleA():
 
 		cmds.connectAttr(child_joint+".translateX", con_grp+".scaleX")
 
-		utils.add_node_to_container(obj_container, [con_grp, parent_con], ihb=True)
+		scale_con = cmds.scaleConstraint(self.module_trans, con_grp, skip=["x"], maintainOffset=0)[0]
+
+		utils.add_node_to_container(obj_container, [con_grp, parent_con, scale_con], ihb=True)
 		utils.add_node_to_container(self.container_name, obj_container)
 
 		return(obj_container, obj, con_grp)
+
+	def init_module_trans(self, root_pos):
+
+		ctrl_grp_file = os.environ["mlrig_tool"]+"/controlobjects/blueprint/controlGroup_control.ma"
+		cmds.file(ctrl_grp_file, i=True)
+
+		self.module_trans = cmds.rename("controlGroup_control", self.module_namespace+":module_transform")
+
+		cmds.xform(self.module_trans, worldSpace=True, absolute=True, translation=root_pos)
+
+		utils.add_node_to_container(self.container_name, self.module_trans, ihb=True)
+
+		# Setup global scaling 
+
+		cmds.connectAttr(self.module_trans+".scaleY", self.module_trans+".scaleX")
+		cmds.connectAttr(self.module_trans+".scaleY", self.module_trans+".scaleZ")
+
+		cmds.aliasAttr("globalScale", self.module_trans+".scaleY")
+
+		cmds.container(self.container_name, edit=True, publishAndBind=[self.module_trans+".translate", "moduleTransform_T"])
+		cmds.container(self.container_name, edit=True, publishAndBind=[self.module_trans+".rotate", "moduleTransform_R"])
+		cmds.container(self.container_name, edit=True, publishAndBind=[self.module_trans+".globalScale", "moduleTransform_globalScale"])
+
+
+
+
+
+
+
+
+
 
