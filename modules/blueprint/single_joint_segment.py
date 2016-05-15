@@ -10,7 +10,7 @@ reload(blueprint_mod)
 
 CLASS_NAME = "SingleJointSegment"
 TITLE = "Single Joint Segment"
-DESCRIPTION = "Creates 2 joints with control for it's joint's orientation and rotation order. Ideal Use: Clavicle/Shoulder"
+DESCRIPTION = "Creates 2 joints with controls for orientation and rotation order. Ideal Use: Clavicle/Shoulder"
 ICON = os.environ["mlrig_tool"]+"/icons/_singleJointSeg.xpm"
 
 class SingleJointSegment(blueprint_mod.Blueprint):
