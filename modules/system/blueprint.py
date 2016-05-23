@@ -21,7 +21,6 @@ class Blueprint():
 		self.joint_info = joint_info
 
 	# Methods intended for overriding by derived classes
-	
 	def install_custom(self,joints):
 
 		print "install_custom() method is not implemented by derived class"
@@ -35,18 +34,18 @@ class Blueprint():
 		joint_pos = module_info[0]
 		num_joints = len(joint_pos)
 
-		joint_ori = module_info[1]
+		joint_ories = module_info[1]
 		ori_with_axis = False
 		pure_ori = False
 
-		if joint_ori[0] == None:
+		if joint_ories[0] == None:
 			ori_with_axis = True
-			joint_ori = joint_ori[1]
+			joint_ories = joint_ories[1]
 		else:
 			pure_ori = True
-			joint_ori = joint_ori[0]
+			joint_ories = joint_ories[0]
 
-		num_ori = len(joint_ori)
+		num_ori = len(joint_ories)
 
 		joint_rotation_orders = module_info[2]
 		num_rotation_orders = len(joint_rotation_orders)
@@ -66,10 +65,60 @@ class Blueprint():
 		cmds.delete(self.container_name)
 		cmds.namespace(setNamespace=":")
 
+		joint_radius = 1
 
+		if num_joints == 1:
+			joint_radius = 1.5
+
+		new_joints = []
+		
+		for i in range(num_joints):
+			
+			new_joint = ""
+			cmds.select(clear=True)
+
+			if ori_with_axis:
+				
+				new_joint = cmds.joint(
+										n=self.module_namespace+":blueprint_"+self.joint_info[i][0],
+										p=joint_pos[i],
+										rotationOrder="xyz",
+										radius=joint_radius
+										)
+				if i != 0:
+					cmds.parent(new_joint, new_joints[i-1], absolute=True)
+					offset_index = i - 1
+					if offset_index < num_ori:
+						print joint_ories[offset_index][0]
+						cmds.joint(
+									new_joints[offset_index],
+									edit=True,
+									oj=joint_ories[offset_index][0],
+									sao=joint_ories[offset_index][1]
+									)
+						cmds.makeIdentity(new_joint, rotate=True, apply=True)
+
+			else:
+				if i != 0:
+					cmds.select(new_joints[i-1])
+
+				joint_ori = [0.0, 0.0, 0.0]
+
+				if i < num_ori:
+					
+					joint_ori = [joint_ories[i][0], joint_ories[i][1], joint_ories[i][2]]
+
+				new_joint = cmds.joint(
+											n=self.module_namespace+":blueprint_"+self.joint_info[i][0],
+											p=joint_pos[i],
+											orientation=joint_ori,
+											rotationOrder="xyz",
+											radius=joint_radius
+										)
+			
+			new_joints.append(new_joint)
 
 	# Baseclass Methods 
-	
 	def install(self):
 		
 		cmds.namespace(setNamespace = ":")
@@ -277,6 +326,7 @@ class Blueprint():
 		return ori_ctrl
 
 	def get_joints(self):
+
 		joint_basename = self.module_namespace+":"
 		joints = []
 
@@ -290,6 +340,7 @@ class Blueprint():
 		return joint_name+"_orientation_control"
 
 	def ori_ctrl_joint_get_ori(self,joint,clean_parent):
+
 		new_clean_parent = cmds.duplicate(joint, parentOnly=True)[0]
 
 		if not clean_parent in cmds.listRelatives(new_clean_parent, parent=True):
@@ -321,3 +372,4 @@ class Blueprint():
 		ori_values = (orient_x, orient_y, orient_z)
 
 		return (ori_values, new_clean_parent)
+
