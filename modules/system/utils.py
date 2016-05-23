@@ -24,7 +24,22 @@ def find_all_modules(relative_directory):
 
 	return return_modules
 
-def find_all_files(relative_directory, file_extension):
+def find_all_module_names(relative_directory):
+
+	valid_modules = find_all_modules(relative_directory)
+	valid_module_names = []
+
+	package_folder = relative_directory.partition("/modules/")[2]
+
+	for m in valid_modules:
+		mod = __import__(package_folder+"."+m, {}, {}, [m])
+		reload(mod)
+
+		valid_module_names.append(mod.CLASS_NAME)
+
+	return(valid_modules, valid_module_names)
+
+def find_all_files(relative_directory,file_extension):
 	
 	# Search the relative directory for all files with the given extenion 
 	# Return a list of all file names, excluding the file extension
@@ -46,7 +61,7 @@ def find_all_files(relative_directory, file_extension):
 
 	return return_files
 
-def find_highest_trailing_number(names, basename):
+def find_highest_trailing_number(names,basename):
 	
 	highest_value = 0 
 
@@ -80,7 +95,7 @@ def strip_all_namespaces(node_name):
 
 	return [split_string[0], split_string[2]]
 
-def basic_stretchy_ik(root_joint, end_joint, container=None, lock_min_len=True, pole_vector_obj=None, scale_correct_atrr=None):
+def basic_stretchy_ik(root_joint,end_joint,container=None,lock_min_len=True,pole_vector_obj=None,scale_correct_atrr=None):
 	
 	contained_nodes = []
 
@@ -208,7 +223,7 @@ def force_scene_update():
 	cmds.select(clear=True)
 	cmds.setToolTo("selectSuperContext")
 
-def add_node_to_container(container, nodes_in, ihb=False, includeShapes=False, force=False):
+def add_node_to_container(container,nodes_in,ihb=False,includeShapes=False,force=False):
 
 	nodes = []
 

@@ -9,7 +9,7 @@ import system.utils as utils
 reload(utils)
 
 class Blueprint():
-	def __init__(self, module_name, user_specified_name, joint_info):
+	def __init__(self,module_name,user_specified_name,joint_info):
 		
 		self.module_name = module_name
 		self.user_specified_name = user_specified_name
@@ -20,20 +20,62 @@ class Blueprint():
 
 		self.joint_info = joint_info
 
-		# Methods intended for overriding by derived classes
+	# Methods intended for overriding by derived classes
 	
-	def install_custom(self, joints):
+	def install_custom(self,joints):
 
 		print "install_custom() method is not implemented by derived class"
 
-		# Baseclass Methods 
+	def lock_phase1(self):
+
+		return None
+
+	def lock_phase2(self, module_info):
+
+		joint_pos = module_info[0]
+		num_joints = len(joint_pos)
+
+		joint_ori = module_info[1]
+		ori_with_axis = False
+		pure_ori = False
+
+		if joint_ori[0] == None:
+			ori_with_axis = True
+			joint_ori = joint_ori[1]
+		else:
+			pure_ori = True
+			joint_ori = joint_ori[0]
+
+		num_ori = len(joint_ori)
+
+		joint_rotation_orders = module_info[2]
+		num_rotation_orders = len(joint_rotation_orders)
+
+		joint_pref_angle = module_info[3]
+		num_pref_angle = 0
+		if joint_pref_angle != None:
+			num_pref_angle = len(joint_pref_angle)
+
+		# hook_obj = module_info[4]
+
+		root_trans = module_info[5]
+
+		# delete our blueprint controls
+
+		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+		cmds.delete(self.container_name)
+		cmds.namespace(setNamespace=":")
+
+
+
+	# Baseclass Methods 
 	
 	def install(self):
 		
 		cmds.namespace(setNamespace = ":")
 		cmds.namespace(add=self.module_namespace)
 
-		self.joints_grp = cmds.group(empty=True, name=self.module_namespace+":joint_grp")
+		self.joints_grp = cmds.group(empty=True, name=self.module_namespace+":joints_grp")
 		self.hierarchy_grp = cmds.group(empty=True, name=self.module_namespace+":hierarchy_grp")
 		self.ori_ctrl_grp = cmds.group(empty=True, name=self.module_namespace+":orientationControls_grp")
 		self.module_grp = cmds.group([self.joints_grp, self.hierarchy_grp, self.ori_ctrl_grp], name=self.module_namespace+":module_grp")
@@ -95,7 +137,7 @@ class Blueprint():
 
 		cmds.lockNode(self.container_name, lock=True, lockUnpublished=True)
 
-	def create_trans_ctrl_at_joint(self, joint):
+	def create_trans_ctrl_at_joint(self,joint):
 		
 		pos_ctrl_file = os.environ["mlrig_tool"]+"/controlobjects/blueprint/translation_control.ma"
 		cmds.file(pos_ctrl_file, i=True)
@@ -122,11 +164,11 @@ class Blueprint():
 
 		return control
 
-	def get_trans_ctrl(self, joint_name):
+	def get_trans_ctrl(self,joint_name):
 
 		return joint_name+"_translation_control"
 
-	def setup_stretchy_jnt_segment(self, parent_joint, child_joint):
+	def setup_stretchy_jnt_segment(self,parent_joint,child_joint):
 		
 		parent_trans_control = self.get_trans_ctrl(parent_joint)
 		child_trans_control = self.get_trans_ctrl(child_joint)
@@ -155,14 +197,14 @@ class Blueprint():
 
 		self.create_hierarchy(parent_joint, child_joint)
 
-	def create_hierarchy(self, parent_joint, child_joint):
+	def create_hierarchy(self,parent_joint,child_joint):
 
 		nodes = self.create_stretchy_obj("/controlobjects/blueprint/hierarchy_representation.ma", "hierarchy_representation_container", "hierarchy_representation", parent_joint, child_joint)
 		con_grp = nodes[2]
 
 		cmds.parent(con_grp, self.hierarchy_grp, relative=True)
 
-	def create_stretchy_obj(self, obj_relative_filepath, obj_container_name, obj_name, parent_joint, child_joint):
+	def create_stretchy_obj(self,obj_relative_filepath,obj_container_name,obj_name,parent_joint,child_joint):
 
 		obj_file = os.environ["mlrig_tool"]+obj_relative_filepath
 		cmds.file(obj_file, i=True)
@@ -188,7 +230,7 @@ class Blueprint():
 
 		return(obj_container, obj, con_grp)
 
-	def init_module_trans(self, root_pos):
+	def init_module_trans(self,root_pos):
 
 		ctrl_grp_file = os.environ["mlrig_tool"]+"/controlobjects/blueprint/controlGroup_control.ma"
 		cmds.file(ctrl_grp_file, i=True)
@@ -210,12 +252,12 @@ class Blueprint():
 		cmds.container(self.container_name, edit=True, publishAndBind=[self.module_trans+".rotate", "moduleTransform_R"])
 		cmds.container(self.container_name, edit=True, publishAndBind=[self.module_trans+".globalScale", "moduleTransform_globalScale"])
 
-	def delete_hierarchy(self, parent_joint):
+	def delete_hierarchy(self,parent_joint):
 
 		hierarchy_container = parent_joint+"_hierarchy_representation_container"
 		cmds.delete(hierarchy_container)
 
-	def create_ori_ctrl(self, parent_joint, child_joint):
+	def create_ori_ctrl(self,parent_joint,child_joint):
 
 		self.delete_hierarchy(parent_joint)
 
@@ -233,3 +275,49 @@ class Blueprint():
 		cmds.container(self.container_name, edit=True, publishAndBind=[ori_container+"."+attr_name, attr_name])
 
 		return ori_ctrl
+
+	def get_joints(self):
+		joint_basename = self.module_namespace+":"
+		joints = []
+
+		for joint_inf in self.joint_info:
+			joints.append(joint_basename+joint_inf[0])
+
+		return joints
+
+	def get_ori_ctrl(self,joint_name):
+
+		return joint_name+"_orientation_control"
+
+	def ori_ctrl_joint_get_ori(self,joint,clean_parent):
+		new_clean_parent = cmds.duplicate(joint, parentOnly=True)[0]
+
+		if not clean_parent in cmds.listRelatives(new_clean_parent, parent=True):
+			cmds.parent(new_clean_parent, clean_parent, absolute=True)
+
+		cmds.makeIdentity(
+							new_clean_parent,
+							apply=True,
+							rotate=True, 
+							scale=False, 
+							translate=False
+						)
+
+		ori_ctrl = self.get_ori_ctrl(joint)
+		cmds.setAttr(new_clean_parent+".rotateX", cmds.getAttr(ori_ctrl+".rotateX"))
+
+		cmds.makeIdentity(
+							new_clean_parent,
+							apply=True,
+							rotate=True, 
+							scale=False, 
+							translate=False
+						)
+
+		orient_x = cmds.getAttr(new_clean_parent+".jointOrientX")
+		orient_y = cmds.getAttr(new_clean_parent+".jointOrientY")
+		orient_z = cmds.getAttr(new_clean_parent+".jointOrientZ")
+
+		ori_values = (orient_x, orient_y, orient_z)
+
+		return (ori_values, new_clean_parent)
