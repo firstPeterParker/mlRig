@@ -47,9 +47,7 @@ class SingleJointSegment(blueprint_mod.Blueprint):
 		ori_info = self.ori_ctrl_joint_get_ori(joints[0], clean_parent)
 		cmds.delete(ori_info[1])
 		joint_ori_values.append(ori_info[0])
-		# joint_ori_values.append(["xyz, zup"])
 		joint_ories = (joint_ori_values, None)
-		# joint_ories = (None, joint_ori_values)
 
 		joint_rotation_orders.append(cmds.getAttr(joints[0]+".rotateOrder"))
 

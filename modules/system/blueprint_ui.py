@@ -51,7 +51,7 @@ class BlueprintUi:
 										width=True
 									)
 
-		self.scroll_width = tab_width-40
+		self.scroll_width = tab_width+30
 
 		self.initialize_module_tab(
 									tab_height,
@@ -136,7 +136,7 @@ class BlueprintUi:
 
 		cmds.setParent(self.ui_elements["module_column"])
 
-		column_width = tab_width + 50 
+		column_width = tab_width + 50
 
 		self.ui_elements["module_btn_row_column"] = cmds.rowColumnLayout(	
 																			numberOfColumns=3, ro=[(1, "both", 2), (2, "both", 2), (3, "both", 2)], 
