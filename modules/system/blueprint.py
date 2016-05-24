@@ -118,6 +118,108 @@ class Blueprint():
 			
 			new_joints.append(new_joint)
 
+			if i < num_rotation_orders:
+				cmds.setAttr(new_joint+".rotateOrder", int(joint_rotation_orders[i]))
+
+			if i < num_pref_angle:
+				cmds.setAttr(new_joint+".preferredAngleX", joint_rotation_orders[i][0])
+				cmds.setAttr(new_joint+".preferredAngleY", joint_rotation_orders[i][1])
+				cmds.setAttr(new_joint+".preferredAngleZ", joint_rotation_orders[i][2])
+			
+			cmds.setAttr(new_joint+".segmentScaleCompensate", 0)
+
+		blueprint_grp = cmds.group(empty=True, name=self.module_namespace+":blueprint_joints_grp")
+		cmds.parent(new_joints[0], blueprint_grp, absolute=True)
+
+		creation_pose_grp_nodes = cmds.duplicate(
+													blueprint_grp,
+													name=self.module_namespace+":creationPose_joints_grp",
+													renameChildren=True
+												)
+		creation_pose_grp = creation_pose_grp_nodes[0]
+
+		creation_pose_grp_nodes.pop(0)
+		i = 0 
+		for node in creation_pose_grp_nodes:
+			rename_node = cmds.rename(node, self.module_namespace+":creationPose_"+self.joint_info[i][0])
+			cmds.setAttr(rename_node+".visibility", 0)
+			i +=1
+
+		cmds.select(blueprint_grp, replace=True)
+		cmds.addAttr(at="bool", defaultValue=0, ln="controlModuleInstalled", k=False)
+
+		settings_locator = cmds.spaceLocator(n=self.module_namespace+":SETTINGS")[0]
+		cmds.setAttr(settings_locator+".visibility", 0)
+
+		cmds.select(settings_locator, replace=True)
+		cmds.addAttr(at="enum", ln="activeModule", en="None:", k=False)
+		cmds.addAttr(at="float", ln="creationPoseWeight", defaultValue=1, k=False)
+
+		i = 0 
+		utility_nodes = []
+		
+		for joint in new_joints:
+			
+			if i < (num_joints-1) or num_joints == 1:
+				
+				add_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addRotations", asUtility=True)
+				cmds.connectAttr(add_node+".output3D", joint+".rotate", force=True)
+				utility_nodes.append(add_node)
+
+				dummy_rotations_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_dummyRotationsMultiply", asUtility=True)
+				cmds.connectAttr(dummy_rotations_multiply+".output", add_node+".input3D[0]", force=True)
+
+				utility_nodes.append(dummy_rotations_multiply)
+
+			if i > 0:
+
+				original_tx = cmds.getAttr(joint+".tx")
+				add_tx_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addTx", asUtility=True)
+
+				cmds.connectAttr(add_tx_node+".output1D", joint+".translateX", force=True)
+				utility_nodes.append(add_tx_node)
+
+				original_tx_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_tx", asUtility=True)
+				
+				cmds.setAttr(original_tx_multiply+".input1X", original_tx, lock=True)
+				cmds.connectAttr(settings_locator+".creationPoseWeight", original_tx_multiply+".input2X", force=True)
+				cmds.connectAttr(original_tx_multiply+".outputX", add_tx_node+".input1D[0]", force=True)
+
+				utility_nodes.append(original_tx_multiply)
+
+			else:
+
+				if root_trans:
+
+					original_translates = cmds.getAttr(joint+".translate")[0]
+					add_translate_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addTranslate", asUtility=True)
+					cmds.connectAttr(add_translate_node+".output3D", joint+".translate", force=True)
+					utility_nodes.append(add_translate_node)
+
+					original_translate_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_Translate", asUtility=True)
+					cmds.setAttr(original_translate_multiply+".input1", original_translates[0], original_translates[1], original_translates[2], type="double3")
+					for attr in ["X", "Y", "Z"]:
+						cmds.connectAttr(settings_locator+".creationPoseWeight", original_translate_multiply+".input2"+attr)
+
+					cmds.connectAttr(original_translate_multiply+".output", add_translate_node+".input3D[0]", force=True)
+					utility_nodes.append(original_translate_multiply)
+
+					#Scale
+					original_scale = cmds.getAttr(joint+".scale")[0]
+					add_scale_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addScale", asUtility=True)
+					cmds.connectAttr(add_scale_node+".output3D", joint+".scale", force=True)
+					utility_nodes.append(add_scale_node)
+
+					original_scale_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_scale", asUtility=True)
+					cmds.setAttr(original_scale_multiply+".input1", original_scale[0], original_scale[1], original_scale[2], type="double3")
+					for attr in ["X", "Y", "Z"]:
+						cmds.connectAttr(settings_locator+".creationPoseWeight", original_scale_multiply+".input2"+attr)
+
+					cmds.connectAttr(original_scale_multiply+".output", add_scale_node+".input3D[0]", force=True)
+					utility_nodes.append(original_scale_multiply)
+
+			i += 1
+
 	# Baseclass Methods 
 	def install(self):
 		
