@@ -29,196 +29,9 @@ class Blueprint():
 
 		return None
 
-	def lock_phase2(self, module_info):
-
-		joint_pos = module_info[0]
-		num_joints = len(joint_pos)
-
-		joint_ories = module_info[1]
-		ori_with_axis = False
-		pure_ori = False
-
-		if joint_ories[0] == None:
-			ori_with_axis = True
-			joint_ories = joint_ories[1]
-		else:
-			pure_ori = True
-			joint_ories = joint_ories[0]
-
-		num_ori = len(joint_ories)
-
-		joint_rotation_orders = module_info[2]
-		num_rotation_orders = len(joint_rotation_orders)
-
-		joint_pref_angle = module_info[3]
-		num_pref_angle = 0
-		if joint_pref_angle != None:
-			num_pref_angle = len(joint_pref_angle)
-
-		# hook_obj = module_info[4]
-
-		root_trans = module_info[5]
-
-		# delete our blueprint controls
-
-		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
-		cmds.delete(self.container_name)
-		cmds.namespace(setNamespace=":")
-
-		joint_radius = 1
-
-		if num_joints == 1:
-			joint_radius = 1.5
-
-		new_joints = []
+	def ui_custom(self):
 		
-		for i in range(num_joints):
-			
-			new_joint = ""
-			cmds.select(clear=True)
-
-			if ori_with_axis:
-				
-				new_joint = cmds.joint(
-										n=self.module_namespace+":blueprint_"+self.joint_info[i][0],
-										p=joint_pos[i],
-										rotationOrder="xyz",
-										radius=joint_radius
-										)
-				if i != 0:
-					cmds.parent(new_joint, new_joints[i-1], absolute=True)
-					offset_index = i - 1
-					if offset_index < num_ori:
-						print joint_ories[offset_index][0]
-						cmds.joint(
-									new_joints[offset_index],
-									edit=True,
-									oj=joint_ories[offset_index][0],
-									sao=joint_ories[offset_index][1]
-									)
-						cmds.makeIdentity(new_joint, rotate=True, apply=True)
-
-			else:
-				if i != 0:
-					cmds.select(new_joints[i-1])
-
-				joint_ori = [0.0, 0.0, 0.0]
-
-				if i < num_ori:
-					
-					joint_ori = [joint_ories[i][0], joint_ories[i][1], joint_ories[i][2]]
-
-				new_joint = cmds.joint(
-											n=self.module_namespace+":blueprint_"+self.joint_info[i][0],
-											p=joint_pos[i],
-											orientation=joint_ori,
-											rotationOrder="xyz",
-											radius=joint_radius
-										)
-			
-			new_joints.append(new_joint)
-
-			if i < num_rotation_orders:
-				cmds.setAttr(new_joint+".rotateOrder", int(joint_rotation_orders[i]))
-
-			if i < num_pref_angle:
-				cmds.setAttr(new_joint+".preferredAngleX", joint_rotation_orders[i][0])
-				cmds.setAttr(new_joint+".preferredAngleY", joint_rotation_orders[i][1])
-				cmds.setAttr(new_joint+".preferredAngleZ", joint_rotation_orders[i][2])
-			
-			cmds.setAttr(new_joint+".segmentScaleCompensate", 0)
-
-		blueprint_grp = cmds.group(empty=True, name=self.module_namespace+":blueprint_joints_grp")
-		cmds.parent(new_joints[0], blueprint_grp, absolute=True)
-
-		creation_pose_grp_nodes = cmds.duplicate(
-													blueprint_grp,
-													name=self.module_namespace+":creationPose_joints_grp",
-													renameChildren=True
-												)
-		creation_pose_grp = creation_pose_grp_nodes[0]
-
-		creation_pose_grp_nodes.pop(0)
-		i = 0 
-		for node in creation_pose_grp_nodes:
-			rename_node = cmds.rename(node, self.module_namespace+":creationPose_"+self.joint_info[i][0])
-			cmds.setAttr(rename_node+".visibility", 0)
-			i +=1
-
-		cmds.select(blueprint_grp, replace=True)
-		cmds.addAttr(at="bool", defaultValue=0, ln="controlModuleInstalled", k=False)
-
-		settings_locator = cmds.spaceLocator(n=self.module_namespace+":SETTINGS")[0]
-		cmds.setAttr(settings_locator+".visibility", 0)
-
-		cmds.select(settings_locator, replace=True)
-		cmds.addAttr(at="enum", ln="activeModule", en="None:", k=False)
-		cmds.addAttr(at="float", ln="creationPoseWeight", defaultValue=1, k=False)
-
-		i = 0 
-		utility_nodes = []
-		
-		for joint in new_joints:
-			
-			if i < (num_joints-1) or num_joints == 1:
-				
-				add_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addRotations", asUtility=True)
-				cmds.connectAttr(add_node+".output3D", joint+".rotate", force=True)
-				utility_nodes.append(add_node)
-
-				dummy_rotations_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_dummyRotationsMultiply", asUtility=True)
-				cmds.connectAttr(dummy_rotations_multiply+".output", add_node+".input3D[0]", force=True)
-
-				utility_nodes.append(dummy_rotations_multiply)
-
-			if i > 0:
-
-				original_tx = cmds.getAttr(joint+".tx")
-				add_tx_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addTx", asUtility=True)
-
-				cmds.connectAttr(add_tx_node+".output1D", joint+".translateX", force=True)
-				utility_nodes.append(add_tx_node)
-
-				original_tx_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_tx", asUtility=True)
-				
-				cmds.setAttr(original_tx_multiply+".input1X", original_tx, lock=True)
-				cmds.connectAttr(settings_locator+".creationPoseWeight", original_tx_multiply+".input2X", force=True)
-				cmds.connectAttr(original_tx_multiply+".outputX", add_tx_node+".input1D[0]", force=True)
-
-				utility_nodes.append(original_tx_multiply)
-
-			else:
-
-				if root_trans:
-
-					original_translates = cmds.getAttr(joint+".translate")[0]
-					add_translate_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addTranslate", asUtility=True)
-					cmds.connectAttr(add_translate_node+".output3D", joint+".translate", force=True)
-					utility_nodes.append(add_translate_node)
-
-					original_translate_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_Translate", asUtility=True)
-					cmds.setAttr(original_translate_multiply+".input1", original_translates[0], original_translates[1], original_translates[2], type="double3")
-					for attr in ["X", "Y", "Z"]:
-						cmds.connectAttr(settings_locator+".creationPoseWeight", original_translate_multiply+".input2"+attr)
-
-					cmds.connectAttr(original_translate_multiply+".output", add_translate_node+".input3D[0]", force=True)
-					utility_nodes.append(original_translate_multiply)
-
-					#Scale
-					original_scale = cmds.getAttr(joint+".scale")[0]
-					add_scale_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addScale", asUtility=True)
-					cmds.connectAttr(add_scale_node+".output3D", joint+".scale", force=True)
-					utility_nodes.append(add_scale_node)
-
-					original_scale_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_scale", asUtility=True)
-					cmds.setAttr(original_scale_multiply+".input1", original_scale[0], original_scale[1], original_scale[2], type="double3")
-					for attr in ["X", "Y", "Z"]:
-						cmds.connectAttr(settings_locator+".creationPoseWeight", original_scale_multiply+".input2"+attr)
-
-					cmds.connectAttr(original_scale_multiply+".output", add_scale_node+".input3D[0]", force=True)
-					utility_nodes.append(original_scale_multiply)
-
-			i += 1
+		temp = 1
 
 	# Baseclass Methods 
 	def install(self):
@@ -475,3 +288,260 @@ class Blueprint():
 
 		return (ori_values, new_clean_parent)
 
+	def lock_phase2(self, module_info):
+
+		joint_pos = module_info[0]
+		num_joints = len(joint_pos)
+
+		joint_ories = module_info[1]
+		ori_with_axis = False
+		pure_ori = False
+
+		if joint_ories[0] == None:
+			ori_with_axis = True
+			joint_ories = joint_ories[1]
+		else:
+			pure_ori = True
+			joint_ories = joint_ories[0]
+
+		num_ori = len(joint_ories)
+
+		joint_rotation_orders = module_info[2]
+		num_rotation_orders = len(joint_rotation_orders)
+
+		joint_pref_angle = module_info[3]
+		num_pref_angle = 0
+		if joint_pref_angle != None:
+			num_pref_angle = len(joint_pref_angle)
+
+		# hook_obj = module_info[4]
+
+		root_trans = module_info[5]
+
+		# delete our blueprint controls
+
+		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+		cmds.delete(self.container_name)
+		cmds.namespace(setNamespace=":")
+
+		joint_radius = 1
+
+		if num_joints == 1:
+			joint_radius = 1.5
+
+		new_joints = []
+		
+		for i in range(num_joints):
+			
+			new_joint = ""
+			cmds.select(clear=True)
+
+			if ori_with_axis:
+				
+				new_joint = cmds.joint(
+											n=self.module_namespace+":blueprint_"+self.joint_info[i][0],
+											p=joint_pos[i],
+											rotationOrder="xyz",
+											radius=joint_radius
+										)
+				if i != 0:
+					cmds.parent(new_joint, new_joints[i-1], absolute=True)
+					offset_index = i - 1
+					if offset_index < num_ori:
+						print joint_ories[offset_index][0]
+						cmds.joint(
+										new_joints[offset_index],
+										edit=True,
+										oj=joint_ories[offset_index][0],
+										sao=joint_ories[offset_index][1]
+									)
+						cmds.makeIdentity(new_joint, rotate=True, apply=True)
+
+			else:
+				if i != 0:
+					cmds.select(new_joints[i-1])
+
+				joint_ori = [0.0, 0.0, 0.0]
+
+				if i < num_ori:
+					
+					joint_ori = [joint_ories[i][0], joint_ories[i][1], joint_ories[i][2]]
+
+				new_joint = cmds.joint(
+											n=self.module_namespace+":blueprint_"+self.joint_info[i][0],
+											p=joint_pos[i],
+											orientation=joint_ori,
+											rotationOrder="xyz",
+											radius=joint_radius
+										)
+			
+			new_joints.append(new_joint)
+
+			if i < num_rotation_orders:
+				cmds.setAttr(new_joint+".rotateOrder", int(joint_rotation_orders[i]))
+
+			if i < num_pref_angle:
+				cmds.setAttr(new_joint+".preferredAngleX", joint_rotation_orders[i][0])
+				cmds.setAttr(new_joint+".preferredAngleY", joint_rotation_orders[i][1])
+				cmds.setAttr(new_joint+".preferredAngleZ", joint_rotation_orders[i][2])
+			
+			cmds.setAttr(new_joint+".segmentScaleCompensate", 0)
+
+		blueprint_grp = cmds.group(empty=True, name=self.module_namespace+":blueprint_joints_grp")
+		cmds.parent(new_joints[0], blueprint_grp, absolute=True)
+
+		creation_pose_grp_nodes = cmds.duplicate(
+													blueprint_grp,
+													name=self.module_namespace+":creationPose_joints_grp",
+													renameChildren=True
+												)
+		creation_pose_grp = creation_pose_grp_nodes[0]
+
+		creation_pose_grp_nodes.pop(0)
+		i = 0 
+		for node in creation_pose_grp_nodes:
+			rename_node = cmds.rename(node, self.module_namespace+":creationPose_"+self.joint_info[i][0])
+			cmds.setAttr(rename_node+".visibility", 0)
+			i +=1
+
+		cmds.select(blueprint_grp, replace=True)
+		cmds.addAttr(at="bool", defaultValue=0, ln="controlModuleInstalled", k=False)
+
+		settings_locator = cmds.spaceLocator(n=self.module_namespace+":SETTINGS")[0]
+		cmds.setAttr(settings_locator+".visibility", 0)
+
+		cmds.select(settings_locator, replace=True)
+		cmds.addAttr(at="enum", ln="activeModule", en="None:", k=False)
+		cmds.addAttr(at="float", ln="creationPoseWeight", defaultValue=1, k=False)
+
+		i = 0 
+		utility_nodes = []
+		
+		for joint in new_joints:
+			
+			if i < (num_joints-1) or num_joints == 1:
+				
+				add_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addRotations", asUtility=True)
+				cmds.connectAttr(add_node+".output3D", joint+".rotate", force=True)
+				utility_nodes.append(add_node)
+
+				dummy_rotations_multiply = cmds.shadingNode(
+																"multiplyDivide",
+																n=joint+"_dummyRotationsMultiply",
+																asUtility=True
+															)
+
+				cmds.connectAttr(dummy_rotations_multiply+".output", add_node+".input3D[0]", force=True)
+
+				utility_nodes.append(dummy_rotations_multiply)
+
+			if i > 0:
+
+				original_tx = cmds.getAttr(joint+".tx")
+				add_tx_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addTx", asUtility=True)
+
+				cmds.connectAttr(add_tx_node+".output1D", joint+".translateX", force=True)
+				utility_nodes.append(add_tx_node)
+
+				original_tx_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_tx", asUtility=True)
+				
+				cmds.setAttr(original_tx_multiply+".input1X", original_tx, lock=True)
+				cmds.connectAttr(settings_locator+".creationPoseWeight", original_tx_multiply+".input2X", force=True)
+				cmds.connectAttr(original_tx_multiply+".outputX", add_tx_node+".input1D[0]", force=True)
+
+				utility_nodes.append(original_tx_multiply)
+
+			else:
+
+				if root_trans:
+
+					original_translates = cmds.getAttr(joint+".translate")[0]
+					add_translate_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addTranslate", asUtility=True)
+					cmds.connectAttr(add_translate_node+".output3D", joint+".translate", force=True)
+					utility_nodes.append(add_translate_node)
+
+					original_translate_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_Translate", asUtility=True)
+					cmds.setAttr(
+									original_translate_multiply+".input1",
+									original_translates[0],
+									original_translates[1],
+									original_translates[2],
+									type="double3"
+								)
+
+					for attr in ["X", "Y", "Z"]:
+						cmds.connectAttr(settings_locator+".creationPoseWeight", original_translate_multiply+".input2"+attr)
+
+					cmds.connectAttr(original_translate_multiply+".output", add_translate_node+".input3D[0]", force=True)
+					utility_nodes.append(original_translate_multiply)
+
+					#Scale
+					original_scale = cmds.getAttr(joint+".scale")[0]
+					add_scale_node = cmds.shadingNode("plusMinusAverage", n=joint+"_addScale", asUtility=True)
+					cmds.connectAttr(add_scale_node+".output3D", joint+".scale", force=True)
+					utility_nodes.append(add_scale_node)
+
+					original_scale_multiply = cmds.shadingNode("multiplyDivide", n=joint+"_original_scale", asUtility=True)
+					cmds.setAttr(
+									original_scale_multiply+".input1",
+									original_scale[0],
+									original_scale[1],
+									original_scale[2],
+									type="double3"
+								)
+
+					for attr in ["X", "Y", "Z"]:
+						cmds.connectAttr(settings_locator+".creationPoseWeight", original_scale_multiply+".input2"+attr)
+
+					cmds.connectAttr(original_scale_multiply+".output", add_scale_node+".input3D[0]", force=True)
+					utility_nodes.append(original_scale_multiply)
+
+			i += 1
+
+		blueprint_nodes = utility_nodes
+		blueprint_nodes.append(blueprint_grp)
+		blueprint_nodes.append(creation_pose_grp)
+
+		blueprint_container = cmds.container(n=self.module_namespace+":blueprint_container")
+		utils.add_node_to_container(blueprint_container, blueprint_nodes, ihb=True)
+
+		module_grp = cmds.group(empty=True, name=self.module_namespace+":module_grp")
+		cmds.parent(settings_locator, module_grp, absolute=True)
+
+		# temp
+		for group in [blueprint_grp, creation_pose_grp]:
+			cmds.parent(group, module_grp, absolute=True)
+		# end temp
+
+		module_container = cmds.container(n=self.module_namespace+":module_container")
+		utils.add_node_to_container(
+										module_container,
+										[module_grp,  settings_locator, blueprint_container],
+										includeShapes=True
+									)
+
+		cmds.container(
+							module_container,
+							edit=True,
+							publishAndBind=[settings_locator+".activeModule", "activeModule"]
+						)
+		cmds.container(
+							module_container,
+							edit=True,
+							publishAndBind=[settings_locator+".creationPoseWeight", "creationPoseWeight"]
+						)
+
+		# temp
+		cmds.lockNode(module_container, lock=True, lockUnpublished=True)
+		# end temp
+
+	def ui(self, blueprint_ui_instance, parent_column_layout):
+
+		self.blueprint_ui_instance = blueprint_ui_instance
+		self.parent_column_layout = parent_column_layout
+		self.ui_custom()
+
+	def create_rotation_order_ui_control(self, joint):
+
+		joint_name = utils.strip_all_namespaces(joint)[1]
+		attr_control_group = cmds.attrControlGrp(attribute=joint+".rotateOrder", label=joint_name)

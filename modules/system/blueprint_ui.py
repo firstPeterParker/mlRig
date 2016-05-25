@@ -11,6 +11,8 @@ reload(utils)
 
 class BlueprintUi:
 	def __init__(self):
+
+		self.module_instance = None
 		
 		# Store UI elements in a dictionary
 
@@ -32,7 +34,8 @@ class BlueprintUi:
 
 		self.ui_elements["top_level_column"] = cmds.columnLayout(	
 																	adjustableColumn=True,
-																	columnAlign="center"
+																	columnAlign="center",
+																	adj=True
 																)
 
 		# Setup tabs
@@ -68,7 +71,7 @@ class BlueprintUi:
 		self.ui_elements["lock_publish_column"] = cmds.columnLayout(
 																		adj=True,
 																		columnAlign="center",
-																		rs=3
+																		rs=3,
 																	)
 
 		cmds.separator()
@@ -88,9 +91,23 @@ class BlueprintUi:
 
 		cmds.showWindow(self.ui_elements["window"])
 
+		# UI Script job
+
+		self.create_script_job()
+
+	def create_script_job(self):
+
+		self.job_num = cmds.scriptJob(event=["SelectionChanged", self.modify_selected], runOnce=True, parent=self.ui_elements["window"])
+
+	def delete_script_job(self):
+
+		cmds.scriptJob(kill=self.job_num)
+
 	def initialize_module_tab(self,tab_height,tab_width):
 		
-		scroll_height = tab_height - 150
+		module_specific_scroll_height = 100
+
+		scroll_height = tab_height - module_specific_scroll_height - 160
 
 		self.ui_elements["module_column"] = cmds.columnLayout(adj=True, rs=3)
 
@@ -186,6 +203,25 @@ class BlueprintUi:
 		cmds.setParent(self.ui_elements["module_column"])
 		cmds.separator()
 
+		self.ui_elements["module_specific_roll_column_layout"] = cmds.rowColumnLayout(
+																							nr=1,
+																							rowAttach=[1, "both", 0],
+																							rowHeight=[2, module_specific_scroll_height]
+																						)
+
+		self.ui_elements["module_specific_scroll"] = cmds.scrollLayout(hst=0, width=300)
+
+		self.ui_elements["module_specific_column"] = cmds.columnLayout(
+																			columnWidth=self.scroll_width,
+																			adj=True,
+																			columnAttach=["both", 5],
+																			rs=2
+																		)
+		
+
+		cmds.setParent(self.ui_elements["module_column"])
+		cmds.separator()
+
 	def create_module_install_button(self,module):
 		
 		mod = __import__("blueprint."+module, {}, {}, [module])
@@ -212,7 +248,10 @@ class BlueprintUi:
 																			command=partial(self.install_module, module)
 																		)
 
-		text_column = cmds.columnLayout(columnAlign="center")
+		text_column = cmds.columnLayout(
+											columnAlign="center",
+											adj=True
+										)
 
 		cmds.text(
 						align="center",
@@ -252,10 +291,7 @@ class BlueprintUi:
 
 		module_trans = mod.CLASS_NAME+"__"+user_specified_name+":module_transform"
 
-		cmds.select(
-						module_trans,
-						replace=True
-					)
+		cmds.select(module_trans,replace=True)
 
 		cmds.setToolTo("moveSuperContext")
 
@@ -323,3 +359,76 @@ class BlueprintUi:
 
 		for module in module_instances:
 			module[0].lock_phase2(module[1])
+
+	def modify_selected(self, *args):
+
+		selected_nodes = cmds.ls(selection=True)
+
+		if len(selected_nodes) <= 1:
+			self.module_instance = None
+			selected_module_namespace = None
+			current_module_file = None
+
+			if len(selected_nodes) == 1:
+				last_selected = selected_nodes[0]
+
+				namespace_and_node = utils.strip_leading_namespace(last_selected)
+
+				if namespace_and_node != None:
+					namespace = namespace_and_node[0]
+
+					module_name_info = utils.find_all_module_names("/modules/blueprint")
+					valid_modules = module_name_info[0]
+					valid_module_names = module_name_info[1]
+
+					index = 0
+
+					for module_name in valid_module_names:
+						module_name_inc_suffix = module_name+"__"
+						if namespace.find(module_name_inc_suffix) == 0:
+							current_module_file = valid_modules[index]
+							selected_module_namespace = namespace
+							break
+
+						index += 1
+
+			control_enabled = False
+			user_specified_name = ""
+
+			if selected_module_namespace != None:
+				control_enabled = True
+				user_specified_name = selected_module_namespace.partition("__")[2]
+
+				mod = __import__("blueprint."+current_module_file, {}, {}, [current_module_file])
+				reload(mod)
+
+				module_class = getattr(mod, mod.CLASS_NAME)
+				self.module_instance = module_class(user_specified_name=user_specified_name)
+
+			cmds.button(self.ui_elements["mirror_module_btn"], edit=True, enable=control_enabled)
+			cmds.button(self.ui_elements["snap_root_btn"], edit=True, enable=control_enabled)
+			cmds.button(self.ui_elements["constraint_root_btn"], edit=True, enable=control_enabled)
+			cmds.button(self.ui_elements["delete_module_btn"], edit=True, enable=control_enabled)
+
+			cmds.textField(self.ui_elements["module"], edit=True, enable=control_enabled, text=user_specified_name)
+
+			self.create_module_specific_controls()
+
+		self.create_script_job()
+
+	def create_module_specific_controls(self):
+
+		existing_controls = cmds.columnLayout(
+													self.ui_elements["module_specific_column"],
+													q=True,
+													adj=True,
+													childArray=True
+												)
+
+		if existing_controls != None:
+			cmds.deleteUI(existing_controls)
+
+		cmds.setParent(self.ui_elements["module_specific_column"])
+
+		if self.module_instance != None:
+			self.module_instance.ui(self, self.ui_elements["module_specific_column"])
