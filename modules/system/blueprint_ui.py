@@ -148,7 +148,8 @@ class BlueprintUi:
 		cmds.text(label="Module Name:")
 		self.ui_elements["module"] = cmds.textField(	
 														enable=False,
-														aie=True
+														aie=True,
+														enterCommand=self.rename_module
 													)
 
 		cmds.setParent(self.ui_elements["module_column"])
@@ -192,7 +193,8 @@ class BlueprintUi:
 
 		self.ui_elements["delete_module_btn"] = cmds.button(
 																enable=False,
-																label="Delete"
+																label="Delete",
+																c=self.delete_module
 															)
 
 		self.ui_elements["symmetry_move_checkbox"] = cmds.checkBox(
@@ -432,3 +434,23 @@ class BlueprintUi:
 
 		if self.module_instance != None:
 			self.module_instance.ui(self, self.ui_elements["module_specific_column"])
+
+	def delete_module(self, *args):
+
+		self.module_instance.delete()
+		cmds.select(clear=True)
+
+
+	def rename_module(self, *args):
+
+		new_name = cmds.textField(self.ui_elements["module"], q=True, text=True)
+
+		self.module_instance.rename_module_instance(new_name)
+
+		previous_selection = cmds.ls(sl=True)
+
+		if len(previous_selection) > 0:
+			cmds.select(previous_selection, replace=True)
+		else:
+			cmds.select(clear=True)
+			

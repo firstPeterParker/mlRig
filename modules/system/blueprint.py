@@ -30,7 +30,7 @@ class Blueprint():
 		return None
 
 	def ui_custom(self):
-		
+
 		temp = 1
 
 	# Baseclass Methods 
@@ -545,3 +545,47 @@ class Blueprint():
 
 		joint_name = utils.strip_all_namespaces(joint)[1]
 		attr_control_group = cmds.attrControlGrp(attribute=joint+".rotateOrder", label=joint_name)
+
+	def delete(self):
+
+		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+		cmds.delete(self.container_name)
+
+		cmds.namespace(setNamespace=":")
+		cmds.namespace(removeNamespace=self.module_namespace)
+
+	def rename_module_instance(self, new_name):
+
+		if new_name == self.user_specified_name:
+			return True
+
+		if utils.does_blueprint_user_specified_name_exist(new_name):
+			cmds.confirmDialog(
+									title="Name Confilct",
+									message="Name \""+new_name+"\" already exists, aborting rename",
+									button=["Accept"],
+									defaultButton="Accept"
+								)
+			return False
+
+		else:
+
+			new_namespace = self.module_name+"__"+new_name
+
+			cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+
+			cmds.namespace(setNamespace=":")
+			cmds.namespace(add=new_namespace)
+			cmds.namespace(setNamespace=":")
+
+			cmds.namespace(moveNamespace=[self.module_namespace, new_namespace])
+
+			cmds.namespace(removeNamespace=self.module_namespace)
+
+			self.module_namespace = new_namespace
+			self.container_name = self.module_namespace+"::module_container"
+
+			cmds.lockNode(self.container_name, lock=True, lockUnpublished=True)
+
+			return True
+
