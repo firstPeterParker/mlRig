@@ -14,14 +14,15 @@ DESCRIPTION = "Creates 2 joints with controls for orientation and rotation order
 ICON = os.environ["mlrig_tool"]+"/icons/_singleJointSeg.xpm"
 
 class SingleJointSegment(blueprint_mod.Blueprint):
-	def __init__(self, user_specified_name):
+
+	def __init__(self, user_specified_name, hook_obj):
 
 		joint_info = [
 							["root_joint", [0.0, 0.0, 0.0]],
 							["end_joint", [4.0, 0.0, 0.0]]
 						]
 
-		blueprint_mod.Blueprint.__init__(self, CLASS_NAME, user_specified_name, joint_info)
+		blueprint_mod.Blueprint.__init__(self, CLASS_NAME, user_specified_name, joint_info, hook_obj)
 
 	def install_custom(self, joints):
 
@@ -53,7 +54,7 @@ class SingleJointSegment(blueprint_mod.Blueprint):
 		joint_rotation_orders.append(cmds.getAttr(joints[0]+".rotateOrder"))
 
 		joint_pref_angle = None
-		hook_obj = None
+		hook_obj = self.find_hook_obj_for_lock()
 		root_trans = False
 
 		module_info = (

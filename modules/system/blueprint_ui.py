@@ -10,6 +10,7 @@ import system.utils as utils
 reload(utils)
 
 class BlueprintUi:
+
 	def __init__(self):
 
 		self.module_instance = None
@@ -107,7 +108,7 @@ class BlueprintUi:
 		
 		module_specific_scroll_height = 100
 
-		scroll_height = tab_height - module_specific_scroll_height - 160
+		scroll_height = tab_height - module_specific_scroll_height - 140
 
 		self.ui_elements["module_column"] = cmds.columnLayout(adj=True, rs=3)
 
@@ -164,12 +165,14 @@ class BlueprintUi:
 
 		self.ui_elements["rehook_btn"] = cmds.button(	
 														enable=False,
-														label="Re-hook"
+														label="Re-hook",
+														command=self.rehook_module_setup
 													)
 
 		self.ui_elements["snap_root_btn"] = cmds.button(
 															enable=False,
-															label="Snap Root > Hook"
+															label="Snap Root > Hook",
+															c=self.snap_root_to_hook
 														)
 
 		self.ui_elements["constraint_root_btn"] = cmds.button(
@@ -222,7 +225,7 @@ class BlueprintUi:
 		
 
 		cmds.setParent(self.ui_elements["module_column"])
-		cmds.separator()
+		# cmds.separator()
 
 	def create_module_install_button(self,module):
 		
@@ -284,11 +287,13 @@ class BlueprintUi:
 
 		user_specified_name = basename+str(new_suffix)
 
+		hook_obj = self.find_hook_obj_from_selection()
+
 		mod = __import__("blueprint."+module, {}, {}, [module])
 		reload(mod)
 
 		module_class = getattr(mod, mod.CLASS_NAME)
-		module_instance = module_class(user_specified_name)
+		module_instance = module_class(user_specified_name, hook_obj)
 		module_instance.install()
 
 		module_trans = mod.CLASS_NAME+"__"+user_specified_name+":module_transform"
@@ -353,14 +358,17 @@ class BlueprintUi:
 			reload(mod)
 
 			module_class = getattr(mod, mod.CLASS_NAME)
-			module_instance = module_class(user_specified_name=module[1])
-
+			module_instance = module_class(module[1], None)
 			module_info = module_instance.lock_phase1()
 
 			module_instances.append((module_instance, module_info))
 
 		for module in module_instances:
 			module[0].lock_phase2(module[1])
+
+		for module in module_instances:
+			hook_obj = module[1][4]
+			module[0].lock_phase3(hook_obj)
 
 	def modify_selected(self, *args):
 
@@ -405,8 +413,9 @@ class BlueprintUi:
 				reload(mod)
 
 				module_class = getattr(mod, mod.CLASS_NAME)
-				self.module_instance = module_class(user_specified_name=user_specified_name)
+				self.module_instance = module_class(user_specified_name, None)
 
+			cmds.button(self.ui_elements["rehook_btn"], edit=True, enable=control_enabled)
 			cmds.button(self.ui_elements["mirror_module_btn"], edit=True, enable=control_enabled)
 			cmds.button(self.ui_elements["snap_root_btn"], edit=True, enable=control_enabled)
 			cmds.button(self.ui_elements["constraint_root_btn"], edit=True, enable=control_enabled)
@@ -440,7 +449,6 @@ class BlueprintUi:
 		self.module_instance.delete()
 		cmds.select(clear=True)
 
-
 	def rename_module(self, *args):
 
 		new_name = cmds.textField(self.ui_elements["module"], q=True, text=True)
@@ -454,3 +462,54 @@ class BlueprintUi:
 		else:
 			cmds.select(clear=True)
 			
+
+	def find_hook_obj_from_selection(self, *args):
+
+		selected_objs = cmds.ls(sl=True, transforms=True)
+
+		number_objs = len(selected_objs)
+
+		hook_obj = None
+
+		if number_objs != 0:
+			hook_obj = selected_objs[number_objs -1]
+
+		return hook_obj
+
+	def rehook_module_setup(self, *args):
+
+		selected_nodes = cmds.ls(sl=True, transforms=True)
+
+		if len(selected_nodes) == 2:
+
+			new_hook = self.find_hook_obj_from_selection()
+			self.module_instance.rehook(new_hook)
+
+		else:
+			self.delete_script_job()
+
+			current_selection = cmds.ls(sl=True)
+
+			cmds.headsUpMessage("Please select the joint you wish to re-hook to. Clear selection to un-hook")
+
+			cmds.scriptJob(event=["SelectionChanged", partial(self.rehook_module_callback, current_selection)], runOnce=True)
+
+	def rehook_module_callback(self, current_selection):
+
+		new_hook = self.find_hook_obj_from_selection()
+
+		self.module_instance.rehook(new_hook)
+
+		if len(current_selection) > 0:
+
+			cmds.select(current_selection, replace=True)
+
+		else:
+
+			cmds.select(clear=True)
+
+		self.create_script_job()
+
+	def snap_root_to_hook(self, *args):
+
+		self.module_instance.snap_root_to_hook()

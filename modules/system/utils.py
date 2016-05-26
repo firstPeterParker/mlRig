@@ -255,3 +255,4 @@ def does_blueprint_user_specified_name_exist(name):
 			names.append(namespace.partition("__")[2])
 
 	return name in names
+	

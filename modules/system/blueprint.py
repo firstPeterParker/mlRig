@@ -9,7 +9,8 @@ import system.utils as utils
 reload(utils)
 
 class Blueprint():
-	def __init__(self,module_name,user_specified_name,joint_info):
+
+	def __init__(self,module_name,user_specified_name,joint_info,hook_obj_in):
 		
 		self.module_name = module_name
 		self.user_specified_name = user_specified_name
@@ -19,6 +20,16 @@ class Blueprint():
 		self.container_name = self.module_namespace+":module_container"
 
 		self.joint_info = joint_info
+
+		self.hook_obj = None
+
+		if hook_obj_in != None:
+
+			partition_info = hook_obj_in.rpartition("_translation_control")
+
+			if partition_info[1] != ""and partition_info[2] == "":
+
+				self.hook_obj = hook_obj_in
 
 	# Methods intended for overriding by derived classes
 	def install_custom(self,joints):
@@ -68,9 +79,16 @@ class Blueprint():
 
 			utils.add_node_to_container(self.container_name, joint_name_full)
 
-			cmds.container(self.container_name, edit=True, publishAndBind=[joint_name_full+".rotate", joint_name+"_R"])
-			cmds.container(self.container_name, edit=True, publishAndBind=[joint_name_full+".rotateOrder", joint_name+"_rotateOrder"])
-
+			cmds.container(
+								self.container_name,
+								edit=True,
+								publishAndBind=[joint_name_full+".rotate", joint_name+"_R"]
+							)
+			cmds.container(
+								self.container_name,
+								edit=True,
+								publishAndBind=[joint_name_full+".rotateOrder", joint_name+"_rotateOrder"]
+							)
 
 			if index > 0:
 				cmds.joint(parent_joint, edit=True, orientJoint="xyz", sao="yup")
@@ -86,9 +104,16 @@ class Blueprint():
 		for joint in joints:
 			trans_ctrl.append(self.create_trans_ctrl_at_joint(joint))
 
-		root_joint_point_con = cmds.pointConstraint(trans_ctrl[0], joints[0], maintainOffset=False, name=joints[0]+"_pointConstraint")
+		root_joint_point_con = cmds.pointConstraint(
+														trans_ctrl[0],
+														joints[0],
+														maintainOffset=False,
+														name=joints[0]+"_pointConstraint"
+													)
 
 		utils.add_node_to_container(self.container_name, root_joint_point_con)
+
+		self.initialize_hook(trans_ctrl[0])
 
 		# Set up stretchy joint segment
 
@@ -146,7 +171,13 @@ class Blueprint():
 		cmds.setAttr(pole_vector_loc+".visibility", 0)
 		cmds.setAttr(pole_vector_loc+".ty", -0.5)
 
-		ik_nodes = utils.basic_stretchy_ik(parent_joint, child_joint, container=self.container_name, lock_min_len=False, pole_vector_obj=pole_vector_loc, scale_correct_atrr=None)
+		ik_nodes = utils.basic_stretchy_ik(
+												parent_joint, child_joint,
+												container=self.container_name,
+												lock_min_len=False,
+												pole_vector_obj=pole_vector_loc,
+												scale_correct_atrr=None
+											)
 		ik_handle = ik_nodes["ik_handle"]
 		root_loc = ik_nodes["root_loc"]
 		end_loc = ik_nodes["end_loc"]
@@ -163,7 +194,13 @@ class Blueprint():
 
 	def create_hierarchy(self,parent_joint,child_joint):
 
-		nodes = self.create_stretchy_obj("/controlobjects/blueprint/hierarchy_representation.ma", "hierarchy_representation_container", "hierarchy_representation", parent_joint, child_joint)
+		nodes = self.create_stretchy_obj(
+											"/controlobjects/blueprint/hierarchy_representation.ma",
+											"hierarchy_representation_container",
+											"hierarchy_representation",
+											parent_joint,
+											child_joint
+										)
 		con_grp = nodes[2]
 
 		cmds.parent(con_grp, self.hierarchy_grp, relative=True)
@@ -225,7 +262,13 @@ class Blueprint():
 
 		self.delete_hierarchy(parent_joint)
 
-		nodes = self.create_stretchy_obj("/controlobjects/blueprint/orientation_control.ma", "orientation_control_container", "orientation_control", parent_joint, child_joint)
+		nodes = self.create_stretchy_obj(
+											"/controlobjects/blueprint/orientation_control.ma",
+											"orientation_control_container",
+											"orientation_control",
+											parent_joint,
+											child_joint
+										)
 		ori_container = nodes[0]
 		ori_ctrl = nodes[1]
 		con_grp = nodes[2]
@@ -314,7 +357,7 @@ class Blueprint():
 		if joint_pref_angle != None:
 			num_pref_angle = len(joint_pref_angle)
 
-		# hook_obj = module_info[4]
+		hook_obj = module_info[4]
 
 		root_trans = module_info[5]
 
@@ -406,6 +449,11 @@ class Blueprint():
 
 		cmds.select(blueprint_grp, replace=True)
 		cmds.addAttr(at="bool", defaultValue=0, ln="controlModuleInstalled", k=False)
+
+		hook_grp = cmds.group(empty=True, name=self.module_namespace+":HOOK_IN")
+
+		for obj in [blueprint_grp, creation_pose_grp]:
+			cmds.parent(obj, hook_grp, absolute=True)
 
 		settings_locator = cmds.spaceLocator(n=self.module_namespace+":SETTINGS")[0]
 		cmds.setAttr(settings_locator+".visibility", 0)
@@ -506,17 +554,14 @@ class Blueprint():
 		utils.add_node_to_container(blueprint_container, blueprint_nodes, ihb=True)
 
 		module_grp = cmds.group(empty=True, name=self.module_namespace+":module_grp")
-		cmds.parent(settings_locator, module_grp, absolute=True)
 
-		# temp
-		for group in [blueprint_grp, creation_pose_grp]:
-			cmds.parent(group, module_grp, absolute=True)
-		# end temp
+		for obj in [hook_grp, settings_locator]:
+			cmds.parent(obj, module_grp, absolute=True)
 
 		module_container = cmds.container(n=self.module_namespace+":module_container")
 		utils.add_node_to_container(
 										module_container,
-										[module_grp,  settings_locator, blueprint_container],
+										[module_grp,  settings_locator, blueprint_container, hook_grp],
 										includeShapes=True
 									)
 
@@ -525,15 +570,16 @@ class Blueprint():
 							edit=True,
 							publishAndBind=[settings_locator+".activeModule", "activeModule"]
 						)
+
 		cmds.container(
 							module_container,
 							edit=True,
 							publishAndBind=[settings_locator+".creationPoseWeight", "creationPoseWeight"]
 						)
 
-		# temp
-		cmds.lockNode(module_container, lock=True, lockUnpublished=True)
-		# end temp
+		cmds.select(module_grp)
+		cmds.addAttr(at="float", longName="hierarchicalScale")
+		cmds.connectAttr(hook_grp+".scaleY", module_grp+".hierarchicalScale")
 
 	def ui(self, blueprint_ui_instance, parent_column_layout):
 
@@ -549,6 +595,41 @@ class Blueprint():
 	def delete(self):
 
 		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+
+		valid_module_info = utils.find_all_module_names("/modules/blueprint")
+		valid_modules = valid_module_info[0]
+		valid_module_names = valid_module_info[1]
+
+		hooked_modules = set()
+
+		for joint_info in self.joint_info:
+
+			joint = joint_info[0]
+			trans_control = self.get_trans_ctrl(self.module_namespace+":"+joint)
+
+			connections = cmds.listConnections(trans_control)
+
+			for connection in connections:
+
+				module_instance = utils.strip_leading_namespace(connection)
+
+				if module_instance != None:
+
+					split_string = module_instance[0].partition("__")
+
+					if module_instance[0] != self.module_namespace and split_string[0] in valid_module_names:
+
+						index = valid_module_names.index(split_string[0])
+						hooked_modules.add( (valid_modules[index], split_string[2]) )
+
+		for module in hooked_modules:
+
+			mod = __import__("blueprint."+module[0], {}, {}, [module[0]])
+			module_class = getattr(mod, mod.CLASS_NAME)
+			module_inst = module_class(module[1], None)
+			module_inst.rehook(None)
+
+
 		cmds.delete(self.container_name)
 
 		cmds.namespace(setNamespace=":")
@@ -589,3 +670,177 @@ class Blueprint():
 
 			return True
 
+	def initialize_hook(self, root_trans_control):
+
+		unhooked_locator = cmds.spaceLocator(name=self.module_namespace+":unhookedTarget")[0]
+		cmds.pointConstraint(root_trans_control, unhooked_locator, offset=[0, 0.001, 0])
+		cmds.setAttr(unhooked_locator+".visibility", 0)
+
+		if self.hook_obj == None:
+			self.hook_obj = unhooked_locator
+
+		root_pos = cmds.xform(root_trans_control, q=True, worldSpace=True, translation=True)
+		target_pos = cmds.xform(self.hook_obj, q=True, worldSpace=True, translation=True)
+
+		cmds.select(clear=True)
+
+		root_joint_without_namespace = "hook_root_joint"
+		root_joint = cmds.joint(name=self.module_namespace+":"+root_joint_without_namespace, p=root_pos)
+		cmds.setAttr(root_joint+".visibility", 0)
+
+		target_joint_without_namespace = "hook_target_joint"
+		target_joint = cmds.joint(name=self.module_namespace+":"+target_joint_without_namespace, p=target_pos)
+		cmds.setAttr(target_joint+".visibility", 0)
+
+		cmds.joint(root_joint, edit=True, orientJoint="xyz", sao="yup")
+
+		# Container method for the objects being created in the hook phase
+		hook_grp = cmds.group([root_joint, unhooked_locator], name=self.module_namespace+":hook_grp", parent=self.module_grp)
+
+		hook_container = cmds.container(name=self.module_namespace+":hook_container")
+		utils.add_node_to_container(hook_container, hook_grp, ihb=True)
+		utils.add_node_to_container(self.container_name, hook_container)
+
+		for joint in [root_joint, target_joint]:
+
+			joint_name = utils.strip_all_namespaces(joint)[1]
+			cmds.container(hook_container, edit=True, publishAndBind=[joint+".rotate", joint_name+"_R"])
+
+		# Ik functionality for the hook joints
+		ik_nodes = utils.basic_stretchy_ik(root_joint, target_joint, hook_container, lock_min_len=False)
+		ik_handle = ik_nodes["ik_handle"]
+		root_loc = ik_nodes["root_loc"]
+		end_loc = ik_nodes["end_loc"]
+		pole_vector_loc = ik_nodes["pole_vector_obj"]
+
+		root_point_con = cmds.pointConstraint(
+												root_trans_control,
+												root_joint,
+												maintainOffset=False,
+												name=root_joint+"_pointConstraint"
+											)[0]
+
+		target_point_con = cmds.pointConstraint(
+													self.hook_obj, end_loc,
+													maintainOffset=False,
+													name=self.module_namespace+":hook_pointConstraint"
+												)[0]
+
+		utils.add_node_to_container(hook_container, [root_point_con, target_point_con])
+
+		for node in [ik_handle, root_loc, end_loc, pole_vector_loc]:
+			cmds.parent(node, hook_grp, absolute=True)
+			cmds.setAttr(node+".visibility", 0)
+
+		object_nodes = self.create_stretchy_obj(
+													"/controlobjects/blueprint/hook_representation.ma",
+													"hook_representation_container",
+													"hook_representation",
+													root_joint,
+													target_joint
+												)
+
+		constrained_grp = object_nodes[2]
+		cmds.parent(constrained_grp, hook_grp, absolute=True)
+
+		hook_representation_container = object_nodes[0]
+		cmds.container(self.container_name, edit=True, removeNode=hook_representation_container)
+		utils.add_node_to_container(hook_container, hook_representation_container)
+
+	def rehook(self, new_hook_obj):
+
+		old_hook_obj = self.find_hook_obj()
+
+		self.hook_obj =self.module_namespace+":unhookedTarget"
+
+		if new_hook_obj != None:
+
+			if new_hook_obj.find("_translation_control") != -1:
+
+				split_string = new_hook_obj.split("_translation_control")
+
+				if split_string[1] == "":
+
+					if utils.strip_leading_namespace(new_hook_obj)[0] != self.module_namespace:
+
+						self.hook_obj = new_hook_obj
+
+		if self.hook_obj == old_hook_obj:
+
+			return
+
+		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+
+		hook_constraint = self.module_namespace+":hook_pointConstraint"
+
+		cmds.connectAttr(self.hook_obj+".parentMatrix[0]", hook_constraint+".target[0].targetParentMatrix", force=True)
+		cmds.connectAttr(self.hook_obj+".translate", hook_constraint+".target[0].targetTranslate", force=True)
+		cmds.connectAttr(self.hook_obj+".rotatePivot", hook_constraint+".target[0].targetRotatePivot", force=True)
+		cmds.connectAttr(self.hook_obj+".rotatePivotTranslate", hook_constraint+".target[0].targetRotateTranslate", force=True)
+
+		cmds.lockNode(self.container_name, lock=True, lockUnpublished=True)
+
+	def find_hook_obj(self):
+
+		hook_constraint = self.module_namespace+":hook_pointConstraint"
+		source_attr = cmds.connectionInfo(hook_constraint+".target[0].targetParentMatrix", sourceFromDestination=True)
+
+		source_node = str(source_attr).rpartition(".")[0]
+
+		return source_node
+
+	def find_hook_obj_for_lock(self):
+
+		hook_obj = self.find_hook_obj()
+
+		if hook_obj == self.module_namespace+":unhookedTarget":
+
+			hook_obj = None
+
+		else:
+
+			self.rehook(None)
+
+		return hook_obj
+
+	def lock_phase3(self, hook_obj):
+
+		module_container = self.module_namespace+":module_container"
+
+		if hook_obj != None:
+			hook_obj_module_node = utils.strip_leading_namespace(hook_obj)
+			hook_obj_module = hook_obj_module_node[0]
+			hook_obj_joint = hook_obj_module_node[1].split("_translation_control")[0]
+
+			hook_obj = hook_obj_module+":blueprint_"+hook_obj_joint
+
+			parent_con = cmds.parentConstraint(
+													hook_obj,
+													self.module_namespace+":HOOK_IN",
+													maintainOffset=True,
+													name=self.module_namespace+":hook_parent_constraint"
+												)[0]
+
+			scale_con = cmds.scaleConstraint(
+												hook_obj,
+												self.module_namespace+":HOOK_IN",
+												maintainOffset=True,
+												name=self.module_namespace+":hook_scale_constraint"
+											)[0]
+
+			module_container = self.module_namespace+":module_container"
+			utils.add_node_to_container(module_container, [parent_con, scale_con])
+
+		cmds.lockNode(module_container, lock=True, lockUnpublished=True)
+
+	def snap_root_to_hook(self):
+
+		root_control = self.get_trans_ctrl(self.module_namespace+":"+self.joint_info[0][0])
+		hook_obj = self.find_hook_obj()
+
+		if hook_obj == self.module_namespace+":unhookedTarget":
+
+			return
+
+		hook_obj_pose = cmds.xform(hook_obj, q=True, worldSpace=True, translation=True)
+		cmds.xform(root_control, worldSpace=True, absolute=True, translation=hook_obj_pose)
