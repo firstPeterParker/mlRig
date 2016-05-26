@@ -769,6 +769,8 @@ class Blueprint():
 
 			return
 
+		self.unconstrain_root_from_hook()
+
 		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
 
 		hook_constraint = self.module_namespace+":hook_pointConstraint"
@@ -844,3 +846,50 @@ class Blueprint():
 
 		hook_obj_pose = cmds.xform(hook_obj, q=True, worldSpace=True, translation=True)
 		cmds.xform(root_control, worldSpace=True, absolute=True, translation=hook_obj_pose)
+
+	def constrain_root_to_hook(self):
+
+		root_control = self.get_trans_ctrl(self.module_namespace+":"+self.joint_info[0][0])
+		hook_obj = self.find_hook_obj()
+
+		if hook_obj == self.module_namespace+":unhookedTarget":
+
+			return
+
+		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+
+		cmds.pointConstraint(hook_obj, root_control, maintainOffset=False, name=root_control+"_hookConstraint")
+		
+		cmds.setAttr(root_control+".translate", l=True)
+		cmds.setAttr(root_control+".visibility", l=False)
+		cmds.setAttr(root_control+".visibility", 0)
+		cmds.setAttr(root_control+".visibility", l=True)
+
+		cmds.select(clear=True)
+
+		cmds.lockNode(self.container_name, lock=True, lockUnpublished=True)
+
+	def unconstrain_root_from_hook(self):
+
+		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+
+		root_control = self.get_trans_ctrl(self.module_namespace+":"+self.joint_info[0][0])
+		root_control_hook_constraint = root_control+"_hookConstraint"
+
+		if cmds.objExists(root_control_hook_constraint):
+			cmds.delete(root_control_hook_constraint)
+
+			cmds.setAttr(root_control+".translate", l=False)
+			cmds.setAttr(root_control+".visibility", l=False)
+			cmds.setAttr(root_control+".visibility", 1)
+			cmds.setAttr(root_control+".visibility", l=True)
+
+		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+
+
+	def is_root_constrained(self):
+
+		root_control = self.get_trans_ctrl(self.module_namespace+":"+self.joint_info[0][0])
+		root_control_hook_constraint = root_control+"_hookConstraint"
+
+		return cmds.objExists(root_control_hook_constraint)

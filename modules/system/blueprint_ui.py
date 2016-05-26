@@ -177,7 +177,8 @@ class BlueprintUi:
 
 		self.ui_elements["constraint_root_btn"] = cmds.button(
 																	enable=False,
-																	label="Constraint Root > Hook"
+																	label="Constraint Root > Hook",
+																	c=self.constrain_root_to_hook
 																)
 
 		self.ui_elements["group_selected_btn"] = cmds.button(label="Group Selected")
@@ -404,6 +405,8 @@ class BlueprintUi:
 
 			control_enabled = False
 			user_specified_name = ""
+			constrain_command = self.constrain_root_to_hook
+			constrain_label = "Constrain Root > Hook"
 
 			if selected_module_namespace != None:
 				control_enabled = True
@@ -415,10 +418,23 @@ class BlueprintUi:
 				module_class = getattr(mod, mod.CLASS_NAME)
 				self.module_instance = module_class(user_specified_name, None)
 
+				if self.module_instance.is_root_constrained():
+
+					constrain_command = self.unconstrain_root_from_hook
+					constrain_label = "Unconstrain Root"
+
 			cmds.button(self.ui_elements["rehook_btn"], edit=True, enable=control_enabled)
 			cmds.button(self.ui_elements["mirror_module_btn"], edit=True, enable=control_enabled)
 			cmds.button(self.ui_elements["snap_root_btn"], edit=True, enable=control_enabled)
-			cmds.button(self.ui_elements["constraint_root_btn"], edit=True, enable=control_enabled)
+
+			cmds.button(
+							self.ui_elements["constraint_root_btn"],
+							edit=True,
+							enable=control_enabled,
+							label=constrain_label,
+							c=constrain_command
+						)
+
 			cmds.button(self.ui_elements["delete_module_btn"], edit=True, enable=control_enabled)
 
 			cmds.textField(self.ui_elements["module"], edit=True, enable=control_enabled, text=user_specified_name)
@@ -513,3 +529,25 @@ class BlueprintUi:
 	def snap_root_to_hook(self, *args):
 
 		self.module_instance.snap_root_to_hook()
+
+	def constrain_root_to_hook(self, *args):
+
+		self.module_instance.constrain_root_to_hook()
+
+		cmds.button(
+						self.ui_elements["constraint_root_btn"],
+						edit=True,
+						label="Unconstrain Root",
+						c=self.unconstrain_root_from_hook
+					)
+
+	def unconstrain_root_from_hook(self, *args):
+
+		self.module_instance.unconstrain_root_from_hook()
+
+		cmds.button(
+						self.ui_elements["constraint_root_btn"],
+						edit=True,
+						label="Constrain Root > Hook",
+						c=self.constrain_root_to_hook
+					)
