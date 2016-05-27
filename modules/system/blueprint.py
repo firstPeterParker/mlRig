@@ -884,8 +884,10 @@ class Blueprint():
 			cmds.setAttr(root_control+".visibility", 1)
 			cmds.setAttr(root_control+".visibility", l=True)
 
-		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
+			cmds.select(root_control, replace=True)
+			cmds.setToolTo("moveSuperContext")
 
+		cmds.lockNode(self.container_name, lock=False, lockUnpublished=False)
 
 	def is_root_constrained(self):
 

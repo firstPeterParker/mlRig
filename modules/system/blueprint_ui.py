@@ -181,7 +181,7 @@ class BlueprintUi:
 																	c=self.constrain_root_to_hook
 																)
 
-		self.ui_elements["group_selected_btn"] = cmds.button(label="Group Selected")
+		self.ui_elements["group_selected_btn"] = cmds.button(label="Group Selected", c=self.group_selected)
 
 		self.ui_elements["ungroup_btn"] = cmds.button(
 															enable=False,
@@ -478,7 +478,6 @@ class BlueprintUi:
 		else:
 			cmds.select(clear=True)
 			
-
 	def find_hook_obj_from_selection(self, *args):
 
 		selected_objs = cmds.ls(sl=True, transforms=True)
@@ -551,3 +550,11 @@ class BlueprintUi:
 						label="Constrain Root > Hook",
 						c=self.constrain_root_to_hook
 					)
+
+	def group_selected(self, *args):
+
+		import system.group_selected as group_selected
+		reload(group_selected)
+
+		group_selected.GroupSelected().show_ui()
+
