@@ -293,7 +293,92 @@ class GroupSelected:
 		cmds.container(group_container, edit=True, publishAndBind=[group+".rotate", group_name+"_r"])
 		cmds.container(group_container, edit=True, publishAndBind=[group+".globalScale", group_name+"_globalScale"])
 
+class UngroupSelected:
 
+	def __init__(self):
 
+		selected_objects = cmds.ls(sl=True, transforms=True)
 
+		filtered_groups = []
 
+		for obj in selected_objects:
+
+			if obj.find("Group__") == 0:
+
+				filtered_groups.append(obj)
+
+		if len(filtered_groups) == 0:
+
+			return
+
+		group_container = "Group_container"
+		modules = []
+
+		for group in filtered_groups:
+
+			modules.extend(self.find_child_modules(group))
+
+		module_containers = [group_container]
+
+		for module in modules:
+
+			module_container = module+":module_container"
+			module_containers.append(module_container)
+
+		for container in module_containers:
+
+			cmds.lockNode(container, lock=False, lockUnpublished=False)
+
+		for group in filtered_groups:
+
+			num_children = len(cmds.listRelatives(group, children=True))
+
+			if num_children > 1:
+
+				cmds.ungroup(group, absolute=True)
+
+			for attr in ["t", "r", "globalScale"]:
+
+				cmds.container(group_container, edit=True, unbindAndUnpublish=group+"."+attr)
+
+			parent_group = cmds.listRelatives(group, parent=True)
+
+			cmds.delete(group)
+
+			if parent_group != None:
+
+				parent_group = parent_group[0]
+				children = cmds.listRelatives(parent_group, children=True)
+				children = cmds.ls(children, transforms=True)
+
+				if len(children) == 0:
+
+					cmds.select(parent_group, replace=True)
+					UngroupSelected()
+
+		for container in module_containers:
+
+			if cmds.objExists(container):
+
+				cmds.lockNode(container, lock=True, lockUnpublished=True)
+
+	def find_child_modules(self, group):
+
+		modules = []
+		children = cmds.listRelatives(group, children=True)
+
+		if children != None:
+
+			for child in children:
+
+				module_namespace_info = utils.strip_leading_namespace(child)
+
+				if module_namespace_info != None:
+
+					modules.append(module_namespace_info[0])
+
+				elif child.find("Group__") != -1:
+
+					modules.extend(self.find_child_modules(child))
+
+		return modules

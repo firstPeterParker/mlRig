@@ -185,7 +185,8 @@ class BlueprintUi:
 
 		self.ui_elements["ungroup_btn"] = cmds.button(
 															enable=False,
-															label="Ungroup"
+															label="Ungroup",
+															c=self.ungroup_selected
 														)
 
 		self.ui_elements["mirror_module_btn"] = cmds.button(
@@ -380,8 +381,14 @@ class BlueprintUi:
 			selected_module_namespace = None
 			current_module_file = None
 
+			cmds.button(self.ui_elements["ungroup_btn"], edit=True, enable=False)
+
 			if len(selected_nodes) == 1:
 				last_selected = selected_nodes[0]
+
+				if last_selected.find("Group__") == 0:
+
+					cmds.button(self.ui_elements["ungroup_btn"], edit=True, enable=True)
 
 				namespace_and_node = utils.strip_leading_namespace(last_selected)
 
@@ -557,4 +564,21 @@ class BlueprintUi:
 		reload(group_selected)
 
 		group_selected.GroupSelected().show_ui()
+
+	def ungroup_selected(self, *args):
+
+		import system.group_selected as group_selected
+		reload(group_selected)
+
+		group_selected.UngroupSelected()
+
+
+
+
+
+
+
+
+
+
 
