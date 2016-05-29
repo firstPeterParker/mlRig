@@ -450,7 +450,22 @@ class MirrorModule:
 			mirror_modules_progress += mirror_modules_progress_progress_increment
 			cmds.progressWindow(mirror_modules_progress_ui, edit=True, progress=mirror_modules_progress)
 
+		mirror_modules_progress_progress_increment = mirror_modules_progress_stage2_proportion/len(self.module_info)
+		
+		for module in self.module_info:
 
+			new_user_specified_name = module[1].partition("__")[2]
+
+			mod = __import__("blueprint."+module[5], {}, {}, [module[5]])
+			reload(mod)
+
+			module_class = getattr(mod, mod.CLASS_NAME)
+			module_inst = module_class(new_user_specified_name, None)
+
+			module_inst.mirror(module[0], module[2], module[3], module[4])
+
+			mirror_modules_progress += mirror_modules_progress_progress_increment
+			cmds.progressWindow(mirror_modules_progress_ui, edit=True, progress=mirror_modules_progress)
 
 		cmds.progressWindow(mirror_modules_progress_ui, edit=True, endProgress=True)
 
