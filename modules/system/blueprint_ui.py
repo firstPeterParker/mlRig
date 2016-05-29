@@ -365,9 +365,18 @@ class BlueprintUi:
 
 			module_instances.append((module_instance, module_info))
 
+		# calling on phase 1 functionality
 		for module in module_instances:
 			module[0].lock_phase2(module[1])
 
+		group_container = "Group_container"
+
+		# finding the existing groups and deleting thems
+		if cmds.objExists(group_container):
+			cmds.lockNode(group_container, lock=False, lockUnpublished=False)
+			cmds.delete(group_container)
+
+		# calling on phase 2 functionality
 		for module in module_instances:
 			hook_obj = module[1][4]
 			module[0].lock_phase3(hook_obj)

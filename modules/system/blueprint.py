@@ -7,6 +7,8 @@ import os
 import maya.cmds as cmds
 import system.utils as utils
 reload(utils)
+import system.group_selected as group_selected
+reload(group_selected)
 
 class Blueprint():
 
@@ -629,11 +631,24 @@ class Blueprint():
 			module_inst = module_class(module[1], None)
 			module_inst.rehook(None)
 
+		module_trans = self.module_namespace+":module_transform"
+		module_trans_parent = cmds.listRelatives(module_trans, parent=True)
 
 		cmds.delete(self.container_name)
 
 		cmds.namespace(setNamespace=":")
 		cmds.namespace(removeNamespace=self.module_namespace)
+
+		if module_trans_parent != None:
+
+			parent_group = module_trans_parent[0]
+			children = cmds.listRelatives(parent_group, children=True)
+			children = cmds.ls(children, transforms=True)
+
+			if len(children) == 0:
+				
+				cmds.select(parent_group, replace=True)
+				group_selected.UngroupSelected()
 
 	def rename_module_instance(self, new_name):
 
