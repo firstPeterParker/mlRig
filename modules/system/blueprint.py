@@ -33,6 +33,8 @@ class Blueprint():
 
 				self.hook_obj = hook_obj_in
 
+		self.can_be_mirrored = True
+
 	# Methods intended for overriding by derived classes
 	def install_custom(self,joints):
 
@@ -910,3 +912,7 @@ class Blueprint():
 		root_control_hook_constraint = root_control+"_hookConstraint"
 
 		return cmds.objExists(root_control_hook_constraint)
+
+	def can_module_be_mirrored(self):
+
+		return self.can_be_mirrored

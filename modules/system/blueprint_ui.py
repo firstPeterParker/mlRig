@@ -8,6 +8,10 @@ from functools import partial
 
 import system.utils as utils
 reload(utils)
+import system.group_selected as group_selected
+reload(group_selected)
+import system.mirror_module as mirror_module
+reload(mirror_module)
 
 class BlueprintUi:
 
@@ -191,7 +195,8 @@ class BlueprintUi:
 
 		self.ui_elements["mirror_module_btn"] = cmds.button(
 																enable=False,
-																label="Mirror Module"
+																label="Mirror Module",
+																c=self.mirror_selection
 															)
 
 		cmds.text(label="")
@@ -391,6 +396,7 @@ class BlueprintUi:
 			current_module_file = None
 
 			cmds.button(self.ui_elements["ungroup_btn"], edit=True, enable=False)
+			cmds.button(self.ui_elements["mirror_module_btn"], edit=True, enable=False)
 
 			if len(selected_nodes) == 1:
 				last_selected = selected_nodes[0]
@@ -398,10 +404,12 @@ class BlueprintUi:
 				if last_selected.find("Group__") == 0:
 
 					cmds.button(self.ui_elements["ungroup_btn"], edit=True, enable=True)
+					cmds.button(self.ui_elements["mirror_module_btn"], edit=True, enable=True, label="Mirror Group")
 
 				namespace_and_node = utils.strip_leading_namespace(last_selected)
 
 				if namespace_and_node != None:
+
 					namespace = namespace_and_node[0]
 
 					module_name_info = utils.find_all_module_names("/modules/blueprint")
@@ -411,10 +419,14 @@ class BlueprintUi:
 					index = 0
 
 					for module_name in valid_module_names:
+
 						module_name_inc_suffix = module_name+"__"
+
 						if namespace.find(module_name_inc_suffix) == 0:
+
 							current_module_file = valid_modules[index]
 							selected_module_namespace = namespace
+
 							break
 
 						index += 1
@@ -425,6 +437,7 @@ class BlueprintUi:
 			constrain_label = "Constrain Root > Hook"
 
 			if selected_module_namespace != None:
+
 				control_enabled = True
 				user_specified_name = selected_module_namespace.partition("__")[2]
 
@@ -434,13 +447,15 @@ class BlueprintUi:
 				module_class = getattr(mod, mod.CLASS_NAME)
 				self.module_instance = module_class(user_specified_name, None)
 
+				cmds.button(self.ui_elements["mirror_module_btn"], edit=True, enable=True, label="Mirror Module")
+
 				if self.module_instance.is_root_constrained():
 
 					constrain_command = self.unconstrain_root_from_hook
 					constrain_label = "Unconstrain Root"
 
 			cmds.button(self.ui_elements["rehook_btn"], edit=True, enable=control_enabled)
-			cmds.button(self.ui_elements["mirror_module_btn"], edit=True, enable=control_enabled)
+
 			cmds.button(self.ui_elements["snap_root_btn"], edit=True, enable=control_enabled)
 
 			cmds.button(
@@ -569,25 +584,14 @@ class BlueprintUi:
 
 	def group_selected(self, *args):
 
-		import system.group_selected as group_selected
-		reload(group_selected)
-
 		group_selected.GroupSelected().show_ui()
 
 	def ungroup_selected(self, *args):
 
-		import system.group_selected as group_selected
-		reload(group_selected)
-
 		group_selected.UngroupSelected()
 
+	def mirror_selection(self, *args):
 
-
-
-
-
-
-
-
+		mirror_module.MirrorModule()
 
 
