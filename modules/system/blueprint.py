@@ -50,6 +50,10 @@ class Blueprint():
 
 		temp = 1
 
+	def mirror_custom(self, original_module):
+
+		print "mirror_custom() method is not implemented by derived class"
+
 	# Baseclass Methods 
 	def install(self):
 		
@@ -1100,4 +1104,66 @@ class Blueprint():
 				cmds.xform(new_pole_vector_locator, worldSpace=True, absolute=True, translation=original_pole_vector_locator_position)
 
 			index += 1
+
+		self.mirror_custom(original_module)
+
+		module_group = self.module_namespace+":module_grp"
+		cmds.select(module_group, replace=True)
+
+		enum_name = "none:x:y:z"
+
+		cmds.addAttr(at="enum", enumName=enum_name, longName="mirrorInfo", k=False)
+
+		enum_value = 0
+
+		if translation_function == "mirrored":
+
+			if mirror_plane == "YZ":
+
+				enum_value = 1
+
+			elif mirror_plane == "XZ":
+
+				enum_value = 2
+
+			elif mirror_plane == "XY":
+
+				enum_value = 3
+
+		cmds.setAttr(module_group+".mirrorInfo", enum_value)
+
+		linked_attribute = "mirrorLinks"
+
+		cmds.lockNode(original_module+":module_container", lock=False, lockUnpublished=False)
+
+		for module_link in ((original_module, self.module_namespace), (self.module_namespace, original_module)):
+
+			module_group = module_link[0]+":module_grp"
+			attribute_value = module_link[1]+"__"
+
+			if mirror_plane == "YZ":
+
+				attribute_value += "X"
+
+			elif mirror_plane == "XZ":
+
+				attribute_value += "Y"
+
+			elif mirror_plane == "XY":
+
+				attribute_value += "Z"
+
+			cmds.select(module_group)
+			cmds.addAttr(dt="string", longName=linked_attribute, k=False)
+			cmds.setAttr(module_group+"."+linked_attribute, attribute_value, type="string")
+
+		for c in [original_module+":module_container", self.container_name]:
+
+			cmds.lockNode(c, lock=True, lockUnpublished=True)
+
+		cmds.select(clear=True)
+
+
+
+
 

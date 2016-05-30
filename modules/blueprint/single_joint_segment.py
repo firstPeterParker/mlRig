@@ -24,10 +24,6 @@ class SingleJointSegment(blueprint_mod.Blueprint):
 
 		blueprint_mod.Blueprint.__init__(self, CLASS_NAME, user_specified_name, joint_info, hook_obj)
 
-	def install_custom(self, joints):
-
-		self.create_ori_ctrl(joints[0], joints[1])
-
 	def lock_phase1(self):
 
 		joint_pos = []
@@ -68,7 +64,29 @@ class SingleJointSegment(blueprint_mod.Blueprint):
 
 		return module_info
 
+	def install_custom(self, joints):
+
+		self.create_ori_ctrl(joints[0], joints[1])
+
 	def ui_custom(self):
 
 		joints = self.get_joints()
 		self.create_rotation_order_ui_control(joints[0])
+
+	def mirror_custom(self, original_module):
+
+		joint_name = self.joint_info[0][0]
+		original_joint = original_module+":"+joint_name
+		new_joint = self.module_namespace+":"+joint_name
+
+		original_ori_control = self.get_ori_ctrl(original_joint)
+		new_ori_control = self.get_ori_ctrl(new_joint)
+
+		cmds.setAttr(new_ori_control+".rotateX", cmds.getAttr(original_ori_control+".rotateX"))
+
+
+
+
+
+
+

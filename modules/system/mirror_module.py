@@ -7,6 +7,8 @@ This script will define the mirror module and mirror group functionality
 import maya.cmds as cmds
 import system.utils as utils
 reload(utils)
+import system.group_selected as group_selected
+reload(group_selected)
 
 class MirrorModule:
 
@@ -467,6 +469,129 @@ class MirrorModule:
 			mirror_modules_progress += mirror_modules_progress_progress_increment
 			cmds.progressWindow(mirror_modules_progress_ui, edit=True, progress=mirror_modules_progress)
 
+		mirror_modules_progress_progress_increment = mirror_modules_progress_stage3_proportion/len(self.module_info)
+
+		for module in self.module_info:
+
+			new_user_specified_name = module[1].partition("__")[2]
+
+			mod = __import__("blueprint."+module[5], {}, {}, [module[5]])
+			reload(mod)
+
+			module_class = getattr(mod, mod.CLASS_NAME)
+			module_inst = module_class(new_user_specified_name, None)
+
+			module_inst.rehook(module[6])
+
+			hook_constrained = module[7]
+
+			if hook_constrained:
+
+				module_inst.constrain_root_to_hook()
+
+			mirror_modules_progress += mirror_modules_progress_progress_increment
+
+			cmds.progressWindow(mirror_modules_progress_ui, edit=True, pr=mirror_modules_progress)
+
+		if self.group != None:
+
+			cmds.lockNode("Group_container", lock=False, lockUnpublished=False)
+
+			group_parent = cmds.listRelatives(self.group, parent=True)
+
+			if group_parent != None:
+
+				group_parent = group_parent[0]
+
+			self.process_group(self.group, group_parent)
+
+			cmds.lockNode("Group_container", lock=True, lockUnpublished=True)
+
+			cmds.select(clear=True)
+
 		cmds.progressWindow(mirror_modules_progress_ui, edit=True, endProgress=True)
 
 		utils.force_scene_update()
+
+	def process_group(self, group, parent):
+
+		temp_group = cmds.duplicate(group, parentOnly=True, inputConnections=True)[0]
+		empty_group = cmds.group(empty=True)
+		cmds.parent(temp_group, empty_group, absolute=True)
+
+		scale_axis = ".scaleX"
+
+		if self.mirror_plane == "XZ":
+
+			scale_axis = ".scaleY"
+
+		elif self.mirror_plane == "XY":
+
+			scale_axis = ".scaleZ"
+
+		cmds.setAttr(empty_group+scale_axis, -1)
+
+		instance = group_selected.GroupSelected()
+		group_suffix = group.partition("__")[2]
+		new_group = instance.create_group_at_specified(group_suffix+"_mirror", temp_group, parent)
+
+		cmds.lockNode("Group_container", lock=False, lockUnpublished=False)
+		cmds.delete(empty_group)
+
+		for module_link in ( (group, new_group), (new_group, group) ):
+
+			attribute_value = module_link[1]+"__"
+
+			if self.mirror_plane == "YZ":
+
+				attribute_value += "X"
+
+			elif self.mirror_plane == "XZ":
+
+				attribute_value += "Y"
+
+			elif self.mirror_plane == "XY":
+
+				attribute_value += "Z"
+
+			cmds.select(module_link[0])
+			cmds.addAttr(dt="string", longName="mirrorLinks", k=False)
+			cmds.setAttr(module_link[0]+"."+"mirrorLinks", attribute_value, type="string")
+
+		cmds.select(clear=True)
+
+		children = cmds.listRelatives(group, children=True)
+		children = cmds.ls(children, transforms=True)
+
+		for child in children:
+
+			if child.find("Group__") == 0:
+
+				self.process_group(child, new_group)
+
+			else:
+
+				child_namespaces = utils.strip_all_namespaces(child)
+
+				if child_namespaces != None and child_namespaces[1] == "module_transform":
+
+					for module in self.module_info:
+
+						if child_namespaces[0] == module[0]:
+
+							module_container = module[1]+":module_container"
+
+							cmds.lockNode(module_container, lock=False, lockUnpublished=False)
+
+							module_transform = module[1]+":module_transform"
+							cmds.parent(module_transform, new_group, absolute=True)
+
+							cmds.lockNode(module_container, lock=True, lockUnpublished=True)
+
+
+
+
+
+
+
+

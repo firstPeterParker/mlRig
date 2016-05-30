@@ -293,6 +293,24 @@ class GroupSelected:
 		cmds.container(group_container, edit=True, publishAndBind=[group+".rotate", group_name+"_r"])
 		cmds.container(group_container, edit=True, publishAndBind=[group+".globalScale", group_name+"_globalScale"])
 
+	def create_group_at_specified(self, name, target_group, parent):
+
+		self.create_temp_grp_representation()
+
+		parent_constraint = cmds.parentConstraint(target_group, self.temp_group_transform, maintainOffset=False)[0]
+		cmds.delete(parent_constraint)
+
+		scale = cmds.getAttr(target_group+".globalScale")
+		cmds.setAttr(self.temp_group_transform+".globalScale", scale)
+
+		if parent != None:
+
+			cmds.parent(self.temp_group_transform, parent, absolute=True)
+
+		new_group = self.create_group(name)
+
+		return new_group
+
 class UngroupSelected:
 
 	def __init__(self):
