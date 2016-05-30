@@ -470,3 +470,8 @@ class MirrorModule:
 		cmds.progressWindow(mirror_modules_progress_ui, edit=True, endProgress=True)
 
 		utils.force_scene_update()
+
+
+
+
+	
