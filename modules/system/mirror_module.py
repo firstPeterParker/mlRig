@@ -513,7 +513,6 @@ class MirrorModule:
 
 		utils.force_scene_update()
 
-<<<<<<< HEAD
 	def process_group(self, group, parent):
 
 		temp_group = cmds.duplicate(group, parentOnly=True, inputConnections=True)[0]
@@ -588,17 +587,3 @@ class MirrorModule:
 							cmds.parent(module_transform, new_group, absolute=True)
 
 							cmds.lockNode(module_container, lock=True, lockUnpublished=True)
-
-
-
-
-
-
-
-
-=======
-
-
-
-	
->>>>>>> origin/master
