@@ -593,5 +593,3 @@ class BlueprintUi:
 	def mirror_selection(self, *args):
 
 		mirror_module.MirrorModule()
-
-
