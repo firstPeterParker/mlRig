@@ -7,11 +7,10 @@ Description: This script is meant to generate a second color set for the selecte
 			 set will generate and store varying gray scale vertex color values
 			 for each vertex. The goal is to add a noise gradient to "colorSet2".
 
-User Interface: The user has the ability to change the minimum and maximum values
-				of the vertex color.
-
-
-para
+User Interface: The user has the ability to create a colorSet1 or colorSet2 depending
+				on if the selected object already has a color set. Also being able to 
+				change the minimum and maximum values of the vertex color, with the
+				abilty to randomize the gray scale noise for colorSet2.
 
 How to Run:
 
@@ -21,20 +20,21 @@ import colorSetScript as css
 reload(css)
 
 color_set = css.ColorSet()
-
-css.main_ui()
+color_set.main_ui()
 
 
 '''
 
+#Imported modules
 import maya.cmds as cmds
 import random as rand
 from functools import partial
 
 
-
+#Class
 class ColorSet():
 
+	#Initual method
 	def __init__(self):
 
 		'''
@@ -45,6 +45,7 @@ class ColorSet():
 		'''
 		print "Color Set Tool Activated"
 	
+	#Create main UI method
 	def main_ui(self):
 
 		'''
@@ -146,10 +147,10 @@ class ColorSet():
 		#show the main window
 		cmds.showWindow(self.ui_elements["main_window"])
 
-		#pointer to script job function
+		#pointer to script job method
 		self.create_script_job()
 
-	#Main function
+	#color set creation method
 	def create_color_set(self, *args):
 
 		'''
@@ -190,6 +191,7 @@ class ColorSet():
 
 		self.main()
 
+	# randomize colorSet2 method
 	def main(self, *args):
 
 		'''
@@ -223,11 +225,12 @@ class ColorSet():
 								)
 			return False
 
-		#If statement generate random values based on the users input for Minimum and Maximum sliders
+		#If statement generates random values based on the users input for Minimum and Maximum sliders
 		if "colorSet2" in color_sets:
 
 			for index in xrange(cmds.polyEvaluate(selected_obj[0], vertex=True)):
 
+				#slider values
 				min_value = cmds.intSliderGrp("minimum", query=True, value=True)
 				max_value = cmds.intSliderGrp("maximum", query=True, value=True)
 
@@ -265,7 +268,7 @@ class ColorSet():
 										parent=self.ui_elements["main_window"]
 									)
 
-	#Kills script job function on window close
+	#Kills script job function
 	def delete_script_job(self):
 
 		print "Killing Script Job"
