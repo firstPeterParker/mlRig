@@ -1,5 +1,4 @@
 '''
-
 Author: Matthew Lowe
 
 Description: This script is meant to generate a second color set for the selected 
